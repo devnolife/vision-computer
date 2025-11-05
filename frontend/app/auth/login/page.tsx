@@ -80,166 +80,166 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-brand-blue-light/30">
       <div className="flex w-full max-w-7xl h-[90vh] rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
         {/* Left Side - Visual/Branding */}
-        <div className="hidden lg:flex lg:w-[30%] bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 relative overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center items-center w-full px-8 text-white">
-          <div className="mb-6">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center mb-4 shadow-2xl mx-auto">
-              <span className="text-4xl">🏠</span>
-            </div>
-            <h1 className="text-3xl font-bold mb-3 text-center">Rumah Plagiasi</h1>
-            <p className="text-blue-100 text-sm text-center">
-              Platform terpercaya untuk membantu Anda melewati sistem deteksi plagiarism dengan aman dan mudah.
-            </p>
+        <div className="hidden lg:flex lg:w-[30%] bg-gradient-to-br from-brand-blue-dark to-brand-blue relative overflow-hidden">
+          {/* Decorative Elements */}
+          <div className="absolute inset-0">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
           </div>
 
-          {/* Stats */}
-          <div className="space-y-3 mt-8 w-full">
-            <div className="text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="text-2xl font-bold mb-1">1000+</div>
-              <div className="text-blue-200 text-xs">Dokumen Diproses</div>
+          {/* Content */}
+          <div className="relative z-10 flex flex-col justify-center items-center w-full px-8 text-white">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center mb-4 shadow-2xl mx-auto">
+                <span className="text-4xl">🏠</span>
+              </div>
+              <h1 className="text-3xl font-bold mb-3 text-center text-white">Rumah Plagiasi</h1>
+              <p className="text-white/90 text-sm text-center">
+                Platform terpercaya untuk membantu Anda melewati sistem deteksi plagiarism dengan aman dan mudah.
+              </p>
             </div>
-            <div className="text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="text-2xl font-bold mb-1">98%</div>
-              <div className="text-blue-200 text-xs">Sukses Rate</div>
-            </div>
-            <div className="text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="text-2xl font-bold mb-1">24/7</div>
-              <div className="text-blue-200 text-xs">Support</div>
+
+            {/* Stats */}
+            <div className="space-y-3 mt-8 w-full">
+              <div className="text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm">
+                <div className="text-2xl font-bold mb-1 text-white">1000+</div>
+                <div className="text-white/80 text-xs">Dokumen Diproses</div>
+              </div>
+              <div className="text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm">
+                <div className="text-2xl font-bold mb-1 text-white">98%</div>
+                <div className="text-white/80 text-xs">Sukses Rate</div>
+              </div>
+              <div className="text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm">
+                <div className="text-2xl font-bold mb-1 text-white">24/7</div>
+                <div className="text-white/80 text-xs">Support</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
         {/* Right Side - Form */}
         <div className="w-full lg:w-[70%] flex items-center justify-center p-8 bg-white overflow-y-auto">
           <div className="w-full max-w-lg">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-lg font-bold">🏠</span>
+            {/* Mobile Logo */}
+            <div className="lg:hidden text-center mb-8">
+              <div className="inline-flex items-center space-x-2 mb-4">
+                <div className="w-10 h-10 bg-brand-blue-dark rounded-lg flex items-center justify-center shadow-md">
+                  <span className="text-white text-lg font-bold">🏠</span>
+                </div>
+                <span className="text-2xl font-bold text-brand-navy-dark">Rumah Plagiasi</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">Rumah Plagiasi</span>
             </div>
-          </div>
 
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Selamat Datang Kembali</h2>
-            <p className="text-gray-600">Masuk ke akun Anda untuk melanjutkan</p>
-          </div>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-brand-navy-dark mb-2">Selamat Datang Kembali</h2>
+              <p className="text-brand-navy">Masuk ke akun Anda untuk melanjutkan</p>
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {showSuccessMessage && (
-              <div className="p-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg flex items-center">
-                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>
-                  <strong>Registrasi berhasil!</strong> Silakan login dengan akun yang baru Anda buat.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowSuccessMessage(false)}
-                  className="ml-auto text-green-700 hover:text-green-900"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {showSuccessMessage && (
+                <div className="p-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg flex items-center">
+                  <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                </button>
-              </div>
-            )}
+                  <span>
+                    <strong>Registrasi berhasil!</strong> Silakan login dengan akun yang baru Anda buat.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuccessMessage(false)}
+                    className="ml-auto text-green-700 hover:text-green-900"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              )}
 
-            {error && (
-              <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                {error}
-              </div>
-            )}
+              {error && (
+                <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  {error}
+                </div>
+              )}
 
-            <div className="space-y-2">
-              <Label htmlFor="identifier" className="text-gray-700 font-medium">Username atau Email</Label>
-              <Input
-                id="identifier"
-                type="text"
-                placeholder="username atau nama@email.com"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-                disabled={isLoading}
-                className="h-12 text-base"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
-              <div className="relative">
+              <div className="space-y-2">
+                <Label htmlFor="identifier" className="text-brand-navy-dark font-medium">Username atau Email</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Masukkan password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  id="identifier"
+                  type="text"
+                  placeholder="username atau nama@email.com"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-12 text-base pr-12"
+                  className="h-12 text-base border-brand-blue/20 focus:border-brand-blue focus:ring-brand-blue/20"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none z-10 cursor-pointer"
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
               </div>
-            </div>
 
-            <Button
-              type="submit"
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Memproses...
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-brand-navy-dark font-medium">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Masukkan password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-12 text-base pr-12 border-brand-blue/20 focus:border-brand-blue focus:ring-brand-blue/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-navy hover:text-brand-blue focus:outline-none z-10 cursor-pointer"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
-              ) : (
-                'Masuk'
-              )}
-            </Button>
+              </div>
 
-            <div className="text-center space-y-4">
-              <p className="text-sm text-gray-600">
-                Belum punya akun?{' '}
-                <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
-                  Daftar Sekarang
+              <Button
+                type="submit"
+                className="w-full h-12 bg-brand-blue-dark hover:bg-brand-blue text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Memproses...
+                  </div>
+                ) : (
+                  'Masuk'
+                )}
+              </Button>
+
+              <div className="text-center space-y-4">
+                <p className="text-sm text-brand-navy">
+                  Belum punya akun?{' '}
+                  <Link href="/auth/register" className="text-brand-blue-dark hover:text-brand-blue font-semibold hover:underline">
+                    Daftar Sekarang
+                  </Link>
+                </p>
+                <Link href="/" className="text-sm text-brand-navy hover:text-brand-blue transition block">
+                  ← Kembali ke Beranda
                 </Link>
-              </p>
-              <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 transition block">
-                ← Kembali ke Beranda
-              </Link>
-            </div>
-          </form>
+              </div>
+            </form>
           </div>
         </div>
       </div>

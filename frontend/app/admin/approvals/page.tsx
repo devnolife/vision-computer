@@ -15,11 +15,13 @@ import {
   Calendar,
   FileCheck,
   Download,
-  Eye
+  Eye,
+  X as CloseIcon
 } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface Document {
   id: string
@@ -31,6 +33,7 @@ interface Document {
   packageCode: string | null
   approvalStatus: string
   uploadedAt: string
+  uploadPath: string | null
   user: {
     id: string
     name: string
@@ -48,6 +51,8 @@ export default function ApprovalsPage() {
   const [filter, setFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING')
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [processing, setProcessing] = useState<string | null>(null)
   const [autoApprovalEnabled, setAutoApprovalEnabled] = useState(false)
@@ -244,6 +249,42 @@ export default function ApprovalsPage() {
     )
   }
 
+  const handlePreview = (doc: Document) => {
+    setPreviewDoc(doc)
+    setShowPreviewDialog(true)
+  }
+
+  const handleDownload = async (doc: Document) => {
+    if (!doc.uploadPath) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'File tidak ditemukan',
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(doc.uploadPath)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.originalFilename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading file:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Gagal',
+        description: 'Gagal mengunduh file',
+      })
+    }
+  }
+
   if (session?.user?.role !== 'ADMIN') {
     return null
   }
@@ -392,33 +433,53 @@ export default function ApprovalsPage() {
                         {doc.pageCount && <div>Halaman: {doc.pageCount}</div>}
                       </div>
 
-                      {filter === 'PENDING' && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleApprove(doc.id)}
-                            disabled={processing === doc.id}
-                            className="h-8 text-xs bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            {processing === doc.id ? 'Memproses...' : 'Setujui'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              setSelectedDoc(doc)
-                              setShowRejectDialog(true)
-                            }}
-                            disabled={processing === doc.id}
-                            className="h-8 text-xs"
-                          >
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Tolak
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePreview(doc)}
+                          className="h-8 text-xs"
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Preview
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownload(doc)}
+                          className="h-8 text-xs"
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download
+                        </Button>
+                        {filter === 'PENDING' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleApprove(doc.id)}
+                              disabled={processing === doc.id}
+                              className="h-8 text-xs bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              {processing === doc.id ? 'Memproses...' : 'Setujui'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedDoc(doc)
+                                setShowRejectDialog(true)
+                              }}
+                              disabled={processing === doc.id}
+                              className="h-8 text-xs"
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Tolak
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -427,6 +488,214 @@ export default function ApprovalsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <DialogTitle className="text-xl font-bold">{previewDoc?.title}</DialogTitle>
+                <p className="text-sm text-gray-500 mt-1">{previewDoc?.originalFilename}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPreviewDialog(false)}
+                className="h-8 w-8 p-0"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {/* Document Info */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y">
+            <div>
+              <p className="text-xs text-gray-500">User</p>
+              <p className="text-sm font-medium">{previewDoc?.user.name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Paket</p>
+              {previewDoc && getPackageBadge(previewDoc.packageCode)}
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Ukuran File</p>
+              <p className="text-sm font-medium">{previewDoc && formatFileSize(previewDoc.fileSize)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Halaman</p>
+              <p className="text-sm font-medium">{previewDoc?.pageCount || 'N/A'}</p>
+            </div>
+          </div>
+
+          {/* Document Preview */}
+          <div className="flex-1 overflow-auto bg-white rounded-lg border p-6">
+            {previewDoc ? (
+              <div className="space-y-6">
+                {/* Document Metadata Card */}
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Judul Dokumen</p>
+                        <p className="font-semibold text-gray-900">{previewDoc.title}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Nama File</p>
+                        <p className="font-semibold text-gray-900">{previewDoc.originalFilename}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Diunggah Oleh</p>
+                        <p className="font-semibold text-gray-900">{previewDoc.user.name}</p>
+                        <p className="text-xs text-gray-500">{previewDoc.user.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Waktu Upload</p>
+                        <p className="font-semibold text-gray-900">{formatDate(previewDoc.uploadedAt)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Document Stats */}
+                <div className="grid grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-gray-900">{previewDoc.pageCount || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">Halaman</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <FileCheck className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-gray-900">{previewDoc.wordCount?.toLocaleString() || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">Kata</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <Download className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-gray-900">{formatFileSize(previewDoc.fileSize)}</p>
+                      <p className="text-xs text-gray-500">Ukuran</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Preview Instructions */}
+                <Card className="border-amber-200 bg-amber-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <Eye className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-amber-900 mb-1">Preview Dokumen</h4>
+                        <p className="text-sm text-amber-800 mb-3">
+                          Untuk melihat isi lengkap dokumen, silakan download file terlebih dahulu.
+                          Review dokumen meliputi:
+                        </p>
+                        <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                          <li>Format dan struktur dokumen sesuai</li>
+                          <li>Ukuran file dalam batas paket ({previewDoc.packageCode})</li>
+                          <li>Jumlah halaman sesuai ketentuan</li>
+                          <li>Tidak ada konten yang melanggar</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Actions */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownload(previewDoc)}
+                    className="flex-1 gap-2 h-12"
+                  >
+                    <Download className="h-5 w-5" />
+                    Download untuk Review Detail
+                  </Button>
+                </div>
+
+                {/* File Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Informasi File</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Path:</span>
+                        <span className="font-mono text-xs text-gray-900">{previewDoc.uploadPath || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status Approval:</span>
+                        <span className={`font-semibold ${previewDoc.approvalStatus === 'PENDING' ? 'text-amber-600' :
+                            previewDoc.approvalStatus === 'APPROVED' ? 'text-green-600' :
+                              'text-red-600'
+                          }`}>
+                          {previewDoc.approvalStatus}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Paket:</span>
+                        {getPackageBadge(previewDoc.packageCode)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>Tidak ada dokumen yang dipilih</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          {previewDoc && filter === 'PENDING' && (
+            <div className="flex gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => handleDownload(previewDoc)}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </Button>
+              <div className="flex-1"></div>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setSelectedDoc(previewDoc)
+                  setShowPreviewDialog(false)
+                  setShowRejectDialog(true)
+                }}
+                disabled={processing === previewDoc.id}
+                className="gap-2"
+              >
+                <XCircle className="h-4 w-4" />
+                Tolak
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => {
+                  handleApprove(previewDoc.id)
+                  setShowPreviewDialog(false)
+                }}
+                disabled={processing === previewDoc.id}
+                className="gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Setujui
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>

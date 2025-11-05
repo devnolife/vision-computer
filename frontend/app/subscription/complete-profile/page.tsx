@@ -7,7 +7,9 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, Phone, MapPin, Building2, GraduationCap, CheckCircle2, Circle, Save } from 'lucide-react'
+import { User, Phone, GraduationCap, CheckCircle2, Circle, Save } from 'lucide-react'
+import { Combobox, ComboboxOption } from '@/components/ui/combobox'
+import { UNIVERSITIES, getFaculties, getMajors } from '@/lib/academic-data'
 
 const STORAGE_KEY = 'complete_profile_draft'
 
@@ -22,36 +24,32 @@ export default function CompleteProfilePage() {
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
-    address: '',
-    city: '',
-    province: '',
-    postalCode: '',
     institution: '',
+    faculty: '',
     major: '',
-    studentId: '',
-    purpose: '',
   })
+
+  // State untuk dropdown akademik
+  const [selectedUniversityId, setSelectedUniversityId] = useState('')
+  const [selectedFacultyId, setSelectedFacultyId] = useState('')
+  const [facultyOptions, setFacultyOptions] = useState<ComboboxOption[]>([])
+  const [majorOptions, setMajorOptions] = useState<ComboboxOption[]>([])
 
   // Load existing profile or draft on mount
   useEffect(() => {
     const loadData = async () => {
       try {
         // Try to load existing profile from API
-        const response = await fetch('/api/profile/complete')
+        const response = await fetch('/api/profile/update')
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.data) {
             setFormData({
               fullName: data.data.fullName || '',
               phone: data.data.phone || '',
-              address: data.data.address || '',
-              city: data.data.city || '',
-              province: data.data.province || '',
-              postalCode: data.data.postalCode || '',
               institution: data.data.institution || '',
+              faculty: data.data.faculty || '',
               major: data.data.major || '',
-              studentId: data.data.studentId || '',
-              purpose: data.data.purpose || '',
             })
             return
           }
@@ -76,6 +74,39 @@ export default function CompleteProfilePage() {
 
     loadData()
   }, [])
+
+  // Update faculty options when university changes
+  useEffect(() => {
+    if (selectedUniversityId) {
+      const faculties = getFaculties(selectedUniversityId)
+      const options: ComboboxOption[] = faculties.map(f => ({
+        value: f.id,
+        label: f.name
+      }))
+      setFacultyOptions(options)
+      // Reset faculty and major if university changes
+      setSelectedFacultyId('')
+      setMajorOptions([])
+    } else {
+      setFacultyOptions([])
+      setSelectedFacultyId('')
+      setMajorOptions([])
+    }
+  }, [selectedUniversityId])
+
+  // Update major options when faculty changes
+  useEffect(() => {
+    if (selectedUniversityId && selectedFacultyId) {
+      const majors = getMajors(selectedUniversityId, selectedFacultyId)
+      const options: ComboboxOption[] = majors.map(major => ({
+        value: major,
+        label: major
+      }))
+      setMajorOptions(options)
+    } else {
+      setMajorOptions([])
+    }
+  }, [selectedUniversityId, selectedFacultyId])
 
   // Auto-save to localStorage
   const saveDraft = useCallback(() => {
@@ -113,10 +144,8 @@ export default function CompleteProfilePage() {
     switch (section) {
       case 'personal':
         return formData.fullName.trim() !== '' && formData.phone.trim() !== ''
-      case 'address':
-        return formData.address.trim() !== '' && formData.city.trim() !== '' && formData.province.trim() !== ''
       case 'academic':
-        return formData.institution.trim() !== '' && formData.major.trim() !== ''
+        return formData.institution.trim() !== '' && formData.faculty.trim() !== '' && formData.major.trim() !== ''
       default:
         return false
     }
@@ -135,7 +164,7 @@ export default function CompleteProfilePage() {
     setError('')
 
     try {
-      const response = await fetch('/api/profile/complete', {
+      const response = await fetch('/api/profile/update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -236,11 +265,10 @@ export default function CompleteProfilePage() {
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isSectionComplete('personal')
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSectionComplete('personal')
                       ? 'bg-green-100 text-green-600'
                       : 'bg-blue-100 text-blue-600'
-                  }`}>
+                    }`}>
                     {isSectionComplete('personal') ? (
                       <CheckCircle2 className="h-6 w-6" />
                     ) : (
@@ -297,100 +325,14 @@ export default function CompleteProfilePage() {
             {/* Divider */}
             <div className="border-t border-gray-200"></div>
 
-            {/* Section 2: Address */}
+            {/* Section 2: Academic Information */}
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isSectionComplete('address')
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSectionComplete('academic')
                       ? 'bg-green-100 text-green-600'
                       : 'bg-blue-100 text-blue-600'
-                  }`}>
-                    {isSectionComplete('address') ? (
-                      <CheckCircle2 className="h-6 w-6" />
-                    ) : (
-                      <MapPin className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Alamat</h2>
-                    <p className="text-sm text-gray-500">Informasi lokasi Anda</p>
-                  </div>
-                </div>
-                {isSectionComplete('address') && (
-                  <span className="text-sm font-medium text-green-600 flex items-center">
-                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                    Lengkap
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-4 pl-13">
-                <div>
-                  <Label htmlFor="address" className="text-sm font-medium">Alamat Lengkap</Label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                    placeholder="Jalan, nomor rumah, RT/RW"
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="city" className="text-sm font-medium">Kota/Kabupaten</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      placeholder="Jakarta"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="province" className="text-sm font-medium">Provinsi</Label>
-                    <Input
-                      id="province"
-                      name="province"
-                      value={formData.province}
-                      onChange={handleChange}
-                      placeholder="DKI Jakarta"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="postalCode" className="text-sm font-medium">Kode Pos</Label>
-                    <Input
-                      id="postalCode"
-                      name="postalCode"
-                      value={formData.postalCode}
-                      onChange={handleChange}
-                      placeholder="12345"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-gray-200"></div>
-
-            {/* Section 3: Academic Information */}
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isSectionComplete('academic')
-                      ? 'bg-green-100 text-green-600'
-                      : 'bg-blue-100 text-blue-600'
-                  }`}>
+                    }`}>
                     {isSectionComplete('academic') ? (
                       <CheckCircle2 className="h-6 w-6" />
                     ) : (
@@ -410,53 +352,78 @@ export default function CompleteProfilePage() {
                 )}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4 pl-13">
+              <div className="space-y-4 pl-13">
+                {/* University/Institution */}
                 <div>
-                  <Label htmlFor="institution" className="text-sm font-medium">Universitas/Sekolah</Label>
-                  <Input
-                    id="institution"
-                    name="institution"
-                    value={formData.institution}
-                    onChange={handleChange}
-                    placeholder="Universitas Indonesia"
-                    className="mt-1"
+                  <Label htmlFor="institution" className="text-sm font-medium">
+                    Nama Universitas / Institusi <span className="text-red-500">*</span>
+                  </Label>
+                  <Combobox
+                    options={UNIVERSITIES.map(u => ({ value: u.id, label: u.name }))}
+                    value={selectedUniversityId || formData.institution}
+                    onChange={(value) => {
+                      // Check if it's a university ID or custom input
+                      const isUniversityId = UNIVERSITIES.some(u => u.id === value)
+                      if (isUniversityId) {
+                        setSelectedUniversityId(value)
+                        setFormData(prev => ({ ...prev, institution: value }))
+                      } else {
+                        // Custom input
+                        setSelectedUniversityId('')
+                        setFormData(prev => ({ ...prev, institution: value }))
+                      }
+                    }}
+                    placeholder="Pilih atau ketik nama universitas..."
+                    allowCustom={true}
+                    disabled={loading}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Pilih dari daftar atau ketik sendiri jika tidak ada</p>
                 </div>
 
+                {/* Faculty */}
                 <div>
-                  <Label htmlFor="major" className="text-sm font-medium">Jurusan/Program Studi</Label>
-                  <Input
-                    id="major"
-                    name="major"
+                  <Label htmlFor="faculty" className="text-sm font-medium">
+                    Nama Fakultas <span className="text-red-500">*</span>
+                  </Label>
+                  <Combobox
+                    options={facultyOptions}
+                    value={selectedFacultyId || formData.faculty}
+                    onChange={(value) => {
+                      // Check if it's a faculty ID or custom input
+                      const isFacultyId = facultyOptions.some(f => f.value === value)
+                      if (isFacultyId) {
+                        setSelectedFacultyId(value)
+                        const faculty = facultyOptions.find(f => f.value === value)
+                        setFormData(prev => ({ ...prev, faculty: faculty?.label || value }))
+                      } else {
+                        // Custom input
+                        setSelectedFacultyId('')
+                        setFormData(prev => ({ ...prev, faculty: value }))
+                      }
+                    }}
+                    placeholder={selectedUniversityId ? "Pilih atau ketik nama fakultas..." : "Pilih universitas terlebih dahulu..."}
+                    allowCustom={true}
+                    disabled={loading || (!selectedUniversityId && !formData.institution)}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Pilih dari daftar atau ketik sendiri jika tidak ada</p>
+                </div>
+
+                {/* Major/Study Program */}
+                <div>
+                  <Label htmlFor="major" className="text-sm font-medium">
+                    Program Studi / Jurusan <span className="text-red-500">*</span>
+                  </Label>
+                  <Combobox
+                    options={majorOptions}
                     value={formData.major}
-                    onChange={handleChange}
-                    placeholder="Teknik Informatika"
-                    className="mt-1"
+                    onChange={(value) => {
+                      setFormData(prev => ({ ...prev, major: value }))
+                    }}
+                    placeholder={selectedFacultyId ? "Pilih atau ketik program studi..." : "Pilih fakultas terlebih dahulu..."}
+                    allowCustom={true}
+                    disabled={loading || (!selectedFacultyId && !formData.faculty)}
                   />
-                </div>
-
-                <div>
-                  <Label htmlFor="studentId" className="text-sm font-medium">NIM/NIS</Label>
-                  <Input
-                    id="studentId"
-                    name="studentId"
-                    value={formData.studentId}
-                    onChange={handleChange}
-                    placeholder="1234567890"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="purpose" className="text-sm font-medium">Tujuan Penggunaan</Label>
-                  <Input
-                    id="purpose"
-                    name="purpose"
-                    value={formData.purpose}
-                    onChange={handleChange}
-                    placeholder="Skripsi, Tesis, dll"
-                    className="mt-1"
-                  />
+                  <p className="text-xs text-gray-500 mt-1">Pilih dari daftar atau ketik sendiri jika tidak ada</p>
                 </div>
               </div>
             </div>

@@ -49,6 +49,7 @@ export default function VerificationStatusPage() {
   const router = useRouter()
   const [status, setStatus] = useState<PaymentStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     fetchStatus()
@@ -57,8 +58,12 @@ export default function VerificationStatusPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const fetchStatus = async () => {
+  const fetchStatus = async (showRefreshing = false) => {
     try {
+      if (showRefreshing) {
+        setRefreshing(true)
+      }
+
       const response = await fetch('/api/payment/status')
       const data = await response.json()
 
@@ -69,7 +74,14 @@ export default function VerificationStatusPage() {
       console.error('Error fetching status:', error)
     } finally {
       setLoading(false)
+      if (showRefreshing) {
+        setRefreshing(false)
+      }
     }
+  }
+
+  const handleRefresh = () => {
+    fetchStatus(true)
   }
 
   const formatPrice = (price: number) => {
@@ -255,11 +267,12 @@ export default function VerificationStatusPage() {
                 </div>
                 <div className="mt-4 flex justify-center space-x-3">
                   <Button
-                    onClick={fetchStatus}
-                    className="h-10 bg-blue-600 hover:bg-blue-700"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="h-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh Status
+                    <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Memperbarui...' : 'Refresh Status'}
                   </Button>
                 </div>
               </div>
@@ -401,24 +414,13 @@ export default function VerificationStatusPage() {
         )}
 
         {/* Footer Info */}
-        <Card className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <RefreshCw className="h-4 w-4 text-blue-600 animate-spin" />
-            <p className="text-sm font-semibold text-blue-900">
-              Auto-refresh aktif setiap 30 detik
+        {!canAccessDashboard && (
+          <Card className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            <p className="text-center text-sm text-gray-700">
+              💡 Tetap di halaman ini untuk melihat progress verifikasi. Anda akan dapat mengakses dashboard setelah pembayaran diverifikasi.
             </p>
-          </div>
-          <p className="text-center text-xs text-blue-600">
-            Halaman ini akan otomatis memperbarui status pembayaran Anda. Anda juga bisa klik tombol "Refresh Status" untuk update manual.
-          </p>
-          {!canAccessDashboard && (
-            <div className="mt-3 pt-3 border-t border-blue-200">
-              <p className="text-center text-xs text-gray-600">
-                💡 Tetap di halaman ini untuk melihat progress verifikasi. Anda akan dapat mengakses dashboard setelah pembayaran diverifikasi.
-              </p>
-            </div>
-          )}
-        </Card>
+          </Card>
+        )}
       </div>
     </div>
   )
