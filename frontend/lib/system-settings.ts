@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
  */
 
 export const SETTING_KEYS = {
-  AUTO_APPROVE_DOCUMENTS: 'auto_approve_documents',
+  AUTO_APPROVE_DOCUMENTS: 'autoApproveDocuments',
   MAX_UPLOAD_SIZE: 'max_upload_size',
   MAINTENANCE_MODE: 'maintenance_mode',
 } as const

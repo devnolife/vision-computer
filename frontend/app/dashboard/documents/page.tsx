@@ -53,6 +53,9 @@ interface Document {
   uploadedAt?: string
   uploadPath: string
   pdfPath?: string
+  requiresApproval?: boolean
+  approvalStatus?: string
+  rejectionReason?: string
   analysis?: {
     flagCount: number
     similarityScore?: number
@@ -566,6 +569,44 @@ export default function DocumentsPage() {
           </Button>
         </div>
 
+        {/* Info Banner - Pending Approval */}
+        {documents.some(doc => doc.requiresApproval && doc.approvalStatus === 'PENDING') && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Clock className="h-4 w-4 text-yellow-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-yellow-900 mb-1">
+                  ⏳ Ada Dokumen Menunggu Persetujuan
+                </h3>
+                <p className="text-xs text-yellow-800 leading-relaxed">
+                  Beberapa dokumen Anda sedang dalam antrian persetujuan admin. Proses akan dimulai otomatis setelah admin menyetujui dokumen.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info Banner - Rejected Documents */}
+        {documents.some(doc => doc.approvalStatus === 'REJECTED') && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-4 w-4 text-red-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-900 mb-1">
+                  ❌ Ada Dokumen yang Ditolak
+                </h3>
+                <p className="text-xs text-red-800 leading-relaxed">
+                  Beberapa dokumen Anda telah ditolak oleh admin. Klik "Detail" pada dokumen untuk melihat alasan penolakan.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="mb-4 p-3 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="flex flex-col md:flex-row gap-3">
@@ -681,6 +722,27 @@ export default function DocumentsPage() {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       {getStatusBadge(doc.status)}
+
+                      {/* Approval Status Badges */}
+                      {doc.requiresApproval && doc.approvalStatus === 'PENDING' && (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-medium flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Menunggu Persetujuan
+                        </span>
+                      )}
+                      {doc.approvalStatus === 'APPROVED' && doc.status === 'PENDING' && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Disetujui
+                        </span>
+                      )}
+                      {doc.approvalStatus === 'REJECTED' && (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-medium flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Ditolak
+                        </span>
+                      )}
+
                       {(doc as any).isDuplicate && (
                         <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded font-medium" title="Dokumen ini menggunakan hasil dari dokumen yang sama yang pernah diproses">
                           Duplikat
@@ -761,6 +823,61 @@ export default function DocumentsPage() {
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
+                {/* Approval Status Banners */}
+                {selectedDocument.requiresApproval && selectedDocument.approvalStatus === 'PENDING' && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-semibold text-yellow-900 mb-1">
+                          Menunggu Persetujuan Admin
+                        </h4>
+                        <p className="text-xs text-yellow-800">
+                          Dokumen ini sedang dalam antrian persetujuan. Proses akan dimulai otomatis setelah disetujui.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedDocument.approvalStatus === 'REJECTED' && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-700 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-red-900 mb-1">
+                          Dokumen Ditolak
+                        </h4>
+                        <p className="text-xs text-red-800 mb-2">
+                          Dokumen ini telah ditolak oleh admin. Silakan perbaiki dan upload ulang.
+                        </p>
+                        {selectedDocument.rejectionReason && (
+                          <div className="mt-2 p-2 bg-red-100 rounded border border-red-200">
+                            <p className="text-xs font-medium text-red-900 mb-1">Alasan Penolakan:</p>
+                            <p className="text-xs text-red-800">{selectedDocument.rejectionReason}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedDocument.approvalStatus === 'APPROVED' && selectedDocument.status === 'PENDING' && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-700 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-semibold text-green-900 mb-1">
+                          Dokumen Disetujui
+                        </h4>
+                        <p className="text-xs text-green-800">
+                          Dokumen telah disetujui. Anda dapat memulai proses bypass sekarang.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Document Info */}
                 <Card className="shadow-sm border border-gray-200">
                   <CardContent className="pt-4 pb-4">

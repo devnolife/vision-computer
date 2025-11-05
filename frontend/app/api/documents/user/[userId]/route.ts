@@ -25,7 +25,18 @@ export async function GET(
     const [documents, total] = await Promise.all([
       prisma.document.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          originalFilename: true,
+          fileSize: true,
+          status: true,
+          uploadedAt: true,
+          uploadPath: true,
+          pdfPath: true,
+          requiresApproval: true,
+          approvalStatus: true,
+          rejectionReason: true,
           analysis: {
             select: {
               flagCount: true,

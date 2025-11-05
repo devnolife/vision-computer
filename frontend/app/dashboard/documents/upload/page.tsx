@@ -149,7 +149,20 @@ export default function UploadDocumentPage() {
   }
 
   const handleUpload = async () => {
+    alert('🎬 UPLOAD BUTTON CLICKED!\n\nDOCX: ' + (selectedDocxFile?.name || 'NO') + '\nPDF: ' + (selectedPdfFile?.name || 'NO'))
+
+    console.log('\n' + '🎬'.repeat(35))
+    console.log('🎬 [CLIENT - UPLOAD PAGE] USER CLICKED UPLOAD BUTTON')
+    console.log('🎬'.repeat(35))
+    console.log('   Title:', title)
+    console.log('   DOCX File:', selectedDocxFile?.name || 'NOT SELECTED')
+    console.log('   PDF File:', selectedPdfFile?.name || 'NOT SELECTED')
+    console.log('   DOCX Size:', selectedDocxFile?.size || 0, 'bytes')
+    console.log('   PDF Size:', selectedPdfFile?.size || 0, 'bytes')
+    console.log('🎬'.repeat(35) + '\n')
+
     if (!selectedDocxFile) {
+      console.error('❌ [ERROR] No DOCX file selected!')
       toast({
         variant: 'warning',
         title: 'Peringatan',
@@ -159,6 +172,7 @@ export default function UploadDocumentPage() {
     }
 
     if (!selectedPdfFile) {
+      console.error('❌ [ERROR] No PDF file selected!')
       toast({
         variant: 'warning',
         title: 'Peringatan',
@@ -168,28 +182,35 @@ export default function UploadDocumentPage() {
     }
 
     setUploading(true)
+    console.log('⏳ Setting uploading state to TRUE...')
 
     try {
-      // Upload files
+      console.log('\n📤 [STEP 1] Creating FormData...')
       const formData = new FormData()
       formData.append('docxFile', selectedDocxFile)
 
       if (selectedPdfFile) {
         formData.append('pdfFile', selectedPdfFile)
+        console.log('   ✅ Added DOCX + PDF to FormData')
+      } else {
+        console.log('   ⚠️ Added DOCX only (NO PDF)')
       }
 
+      console.log('\n📤 [STEP 2] Uploading files to /api/files/upload...')
       const uploadResponse = await fetch('/api/files/upload', {
         method: 'POST',
         body: formData,
       })
 
       const uploadData = await uploadResponse.json()
+      console.log('   Response status:', uploadResponse.status)
+      console.log('   Upload success?', uploadData.success ? '✅ YES' : '❌ NO')
 
       if (!uploadData.success) {
         throw new Error(uploadData.error || 'Gagal mengupload file')
       }
 
-      // Create document record
+      console.log('\n📝 [STEP 3] Creating document record in /api/documents/create...')
       const documentResponse = await fetch('/api/documents/create', {
         method: 'POST',
         headers: {
@@ -209,6 +230,8 @@ export default function UploadDocumentPage() {
       })
 
       const documentData = await documentResponse.json()
+      console.log('   Response status:', documentResponse.status)
+      console.log('   Create success?', documentData.success ? '✅ YES' : '❌ NO')
 
       if (!documentData.success) {
         throw new Error(documentData.error || 'Gagal membuat record dokumen')
@@ -228,46 +251,118 @@ export default function UploadDocumentPage() {
       }
 
       const documentId = documentData.data.id
+      const hasPdfFile = selectedPdfFile || documentData.data.pdfPath
+
+      console.log('\n' + '='.repeat(70))
+      console.log('📋 [CLIENT - UPLOAD PAGE] Document created successfully')
+      console.log('='.repeat(70))
+      console.log('   Document ID:', documentId)
+      console.log('   Title:', title)
+      console.log('   Selected DOCX File:', selectedDocxFile?.name || 'NO')
+      console.log('   Selected PDF File:', selectedPdfFile?.name || 'NO')
+      console.log('   PDF Path in DB:', documentData.data.pdfPath || 'NO')
+      console.log('   Has PDF?', hasPdfFile ? '✅ YES' : '❌ NO')
+      console.log('   Will process?', hasPdfFile ? '✅ YES - Will call backend' : '❌ NO - Skipping backend')
+      console.log('='.repeat(70) + '\n')
+
+      if (!hasPdfFile) {
+        console.warn('⚠️ [WARNING] No PDF Turnitin uploaded - skipping backend processing')
+        toast({
+          title: '📄 Dokumen Berhasil Diupload',
+          description: 'Dokumen DOCX berhasil diupload. Upload PDF Turnitin untuk memulai proses bypass.',
+        })
+
+        router.push('/dashboard/documents')
+        return
+      }
 
       // Trigger background processing (PDF is now required)
-      try {
-        const processResponse = await fetch(`/api/documents/${documentId}/process`, {
-          method: 'POST',
-        })
+      if (hasPdfFile && documentId) {
+        try {
+          // ALERT SEBELUM PANGGIL BACKEND
+          alert('🚀 WILL CALL BACKEND!\n\nDocument ID: ' + documentId + '\nEndpoint: /api/documents/' + documentId + '/process')
 
-        if (processResponse.ok) {
-          const processData = await processResponse.json()
+          console.log('\n' + '🚀'.repeat(35))
+          console.log('🚀 [CLIENT - UPLOAD PAGE] CALLING NEXT.JS API TO PROCESS DOCUMENT')
+          console.log('🚀'.repeat(35))
+          console.log('   Document ID:', documentId)
+          console.log('   Target Endpoint:', `/api/documents/${documentId}/process`)
+          console.log('   Method: POST')
+          console.log('   Timestamp:', new Date().toISOString())
+          console.log('🚀'.repeat(35) + '\n')
 
-          // Save jobId to localStorage for progress tracking
-          if (processData.data?.jobId) {
-            localStorage.setItem(`doc-job-${documentId}`, processData.data.jobId)
+          console.log('>>> Calling fetch() to Next.js API endpoint...')
+
+          const fetchStartTime = Date.now()
+          const processResponse = await fetch(`/api/documents/${documentId}/process`, {
+            method: 'POST',
+          })
+          const fetchDuration = Date.now() - fetchStartTime
+
+          // ALERT SETELAH DAPAT RESPONSE
+          alert('📡 BACKEND RESPONDED!\n\nStatus: ' + processResponse.status + '\nOK: ' + processResponse.ok + '\nTime: ' + fetchDuration + 'ms')
+
+          console.log('\n' + '📡'.repeat(35))
+          console.log(`📡 [CLIENT - UPLOAD PAGE] RESPONSE RECEIVED in ${fetchDuration}ms`)
+          console.log('📡'.repeat(35))
+          console.log('   Status:', processResponse.status, processResponse.statusText)
+          console.log('   OK?', processResponse.ok ? '✅ YES' : '❌ NO')
+          console.log('   Headers:', Object.fromEntries(processResponse.headers.entries()))
+          console.log('📡'.repeat(35) + '\n')
+
+          if (processResponse.ok) {
+            const processData = await processResponse.json()
+
+            // Save jobId to localStorage for progress tracking
+            if (processData.data?.jobId) {
+              localStorage.setItem(`doc-job-${documentId}`, processData.data.jobId)
+            }
+
+            toast({
+              variant: 'success',
+              title: 'Proses Dimulai',
+              description: 'Redirecting ke halaman progress monitoring...',
+            })
+
+            // Redirect to document detail page to show progress
+            setTimeout(() => {
+              router.push(`/dashboard/documents/${documentId}`)
+            }, 800)
+          } else {
+            // Process failed - check if it's approval required
+            const errorData = await processResponse.json()
+
+            if (errorData.requiresApproval) {
+              toast({
+                title: '⏳ Menunggu Persetujuan',
+                description: errorData.message || 'Dokumen berhasil diupload dan sedang menunggu persetujuan admin.',
+              })
+            } else {
+              toast({
+                variant: 'destructive',
+                title: 'Gagal Memproses',
+                description: errorData.message || 'Dokumen berhasil diupload tapi gagal diproses otomatis.',
+              })
+            }
+
+            // Still redirect to documents list
+            setTimeout(() => {
+              router.push('/dashboard/documents')
+            }, 1500)
           }
-
+        } catch (processError) {
+          console.error('Error triggering process:', processError)
           toast({
-            variant: 'success',
-            title: 'Proses Dimulai',
-            description: 'Redirecting ke halaman progress monitoring...',
+            variant: 'warning',
+            title: 'Upload Berhasil',
+            description: 'Dokumen berhasil diupload, tapi gagal memulai proses otomatis. Silakan coba proses manual dari halaman dokumen.',
           })
 
-          // Redirect to document detail page to show progress
+          // Still redirect to document page
           setTimeout(() => {
-            router.push(`/dashboard/documents/${documentId}`)
-          }, 800)
-        } else {
-          throw new Error('Gagal memulai proses')
+            router.push('/dashboard/documents')
+          }, 1500)
         }
-      } catch (processError) {
-        console.error('Error triggering process:', processError)
-        toast({
-          variant: 'warning',
-          title: 'Upload Berhasil',
-          description: 'Dokumen berhasil diupload, tapi gagal memulai proses otomatis. Silakan coba proses manual dari halaman dokumen.',
-        })
-
-        // Still redirect to document page
-        setTimeout(() => {
-          router.push(`/dashboard/documents/${documentId}`)
-        }, 1500)
       }
     } catch (error) {
       console.error('Upload error:', error)
@@ -311,6 +406,40 @@ export default function UploadDocumentPage() {
               <div className="flex-1">
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">Upload Dokumen</h1>
                 <p className="text-gray-600 text-lg">Unggah dokumen DOCX original dan PDF hasil Turnitin untuk dianalisis.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5 mb-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-yellow-700" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-yellow-900 mb-1.5">
+                  ℹ️ Informasi Penting
+                </h3>
+                <ul className="text-xs text-yellow-800 space-y-1 leading-relaxed">
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600 mt-0.5">•</span>
+                    <span>Dokumen yang diupload akan <strong>menunggu persetujuan admin</strong> sebelum dapat diproses</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600 mt-0.5">•</span>
+                    <span>Proses bypass akan dimulai <strong>secara otomatis</strong> setelah admin menyetujui dokumen Anda</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600 mt-0.5">•</span>
+                    <span>Anda akan mendapat notifikasi ketika dokumen telah disetujui atau ditolak</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600 mt-0.5">•</span>
+                    <span>Pastikan dokumen yang diupload <strong>sesuai dengan ketentuan</strong> yang berlaku</span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>

@@ -23,7 +23,26 @@ export async function GET(
 
     const document = await prisma.document.findUnique({
       where: { id: documentId },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        originalFilename: true,
+        fileSize: true,
+        fileType: true,
+        uploadPath: true,
+        uploadedAt: true,
+        userId: true,
+        status: true,
+        pdfPath: true,
+        pdfFilename: true,
+        jobId: true,  // Include jobId for progress tracking
+        jobStartedAt: true,
+        jobCompletedAt: true,
+        pageCount: true,
+        wordCount: true,
+        requiresApproval: true,
+        approvalStatus: true,
+        rejectionReason: true,
         analysis: true,
         bypasses: {
           select: {

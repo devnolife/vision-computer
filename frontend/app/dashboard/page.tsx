@@ -24,6 +24,9 @@ interface Document {
   status: string
   uploadedAt: string
   fileSize: number
+  requiresApproval?: boolean
+  approvalStatus?: string
+  rejectionReason?: string
   analysis?: {
     flagCount: number
     similarityScore?: number
@@ -268,7 +271,21 @@ export default function DashboardPage() {
   }
 
   const handleUpload = async () => {
+    // ALERT UNTUK MEMASTIKAN FUNCTION DIPANGGIL
+    alert('🎬 UPLOAD BUTTON CLICKED!\n\nDOCX: ' + (selectedDocxFile?.name || 'NO') + '\nPDF: ' + (selectedPdfFile?.name || 'NO'))
+
+    console.log('\n' + '🎬'.repeat(35))
+    console.log('🎬 [CLIENT] USER CLICKED UPLOAD BUTTON')
+    console.log('🎬'.repeat(35))
+    console.log('   Title:', title)
+    console.log('   DOCX File:', selectedDocxFile?.name || 'NOT SELECTED')
+    console.log('   PDF File:', selectedPdfFile?.name || 'NOT SELECTED')
+    console.log('   DOCX Size:', selectedDocxFile?.size || 0, 'bytes')
+    console.log('   PDF Size:', selectedPdfFile?.size || 0, 'bytes')
+    console.log('🎬'.repeat(35) + '\n')
+
     if (!selectedDocxFile) {
+      console.error('❌ [ERROR] No DOCX file selected!')
       toast({
         variant: 'destructive',
         title: 'Peringatan',
@@ -278,26 +295,35 @@ export default function DashboardPage() {
     }
 
     setUploading(true)
+    console.log('⏳ Setting uploading state to TRUE...')
 
     try {
+      console.log('\n📤 [STEP 1] Creating FormData...')
       const formData = new FormData()
       formData.append('docxFile', selectedDocxFile)
 
       if (selectedPdfFile) {
         formData.append('pdfFile', selectedPdfFile)
+        console.log('   ✅ Added DOCX + PDF to FormData')
+      } else {
+        console.log('   ⚠️ Added DOCX only (NO PDF)')
       }
 
+      console.log('\n📤 [STEP 2] Uploading files to /api/files/upload...')
       const uploadResponse = await fetch('/api/files/upload', {
         method: 'POST',
         body: formData,
       })
 
       const uploadData = await uploadResponse.json()
+      console.log('   Response status:', uploadResponse.status)
+      console.log('   Upload success?', uploadData.success ? '✅ YES' : '❌ NO')
 
       if (!uploadData.success) {
         throw new Error(uploadData.error || 'Gagal mengupload file')
       }
 
+      console.log('\n📝 [STEP 3] Creating document record in /api/documents/create...')
       const documentResponse = await fetch('/api/documents/create', {
         method: 'POST',
         headers: {
@@ -316,18 +342,75 @@ export default function DashboardPage() {
       })
 
       const documentData = await documentResponse.json()
+      console.log('   Response status:', documentResponse.status)
+      console.log('   Create success?', documentData.success ? '✅ YES' : '❌ NO')
 
       if (!documentData.success) {
         throw new Error(documentData.error || 'Gagal membuat record dokumen')
       }
 
       const documentId = documentData.data.id
+      const hasPdfFile = selectedPdfFile || documentData.data.pdfPath
 
-      if (selectedPdfFile && documentId) {
+      console.log('\n' + '='.repeat(70))
+      console.log('📋 [CLIENT - DASHBOARD] Document created successfully')
+      console.log('='.repeat(70))
+      console.log('   Document ID:', documentId)
+      console.log('   Title:', title)
+      console.log('   Selected DOCX File:', selectedDocxFile?.name || 'NO')
+      console.log('   Selected PDF File:', selectedPdfFile?.name || 'NO')
+      console.log('   PDF Path in DB:', documentData.data.pdfPath || 'NO')
+      console.log('   Has PDF?', hasPdfFile ? '✅ YES' : '❌ NO')
+      console.log('   Will process?', hasPdfFile ? '✅ YES - Will call backend' : '❌ NO - Skipping backend')
+      console.log('='.repeat(70) + '\n')
+
+      if (!hasPdfFile) {
+        console.warn('⚠️ [WARNING] No PDF Turnitin uploaded - skipping backend processing')
+        toast({
+          title: '📄 Dokumen Berhasil Diupload',
+          description: 'Dokumen DOCX berhasil diupload. Upload PDF Turnitin untuk memulai proses bypass.',
+        })
+
+        setUploadDialogOpen(false)
+        setSelectedDocxFile(null)
+        setSelectedPdfFile(null)
+        setTitle('')
+        fetchDocuments()
+        return
+      }
+
+      if (hasPdfFile && documentId) {
         try {
+          // ALERT SEBELUM PANGGIL BACKEND
+          alert('🚀 WILL CALL BACKEND!\n\nDocument ID: ' + documentId + '\nEndpoint: /api/documents/' + documentId + '/process')
+
+          console.log('\n' + '🚀'.repeat(35))
+          console.log('🚀 [CLIENT] CALLING NEXT.JS API TO PROCESS DOCUMENT')
+          console.log('🚀'.repeat(35))
+          console.log('   Document ID:', documentId)
+          console.log('   Target Endpoint:', `/api/documents/${documentId}/process`)
+          console.log('   Method: POST')
+          console.log('   Timestamp:', new Date().toISOString())
+          console.log('🚀'.repeat(35) + '\n')
+
+          console.log('>>> Calling fetch() to Next.js API endpoint...')
+
+          const fetchStartTime = Date.now()
           const processResponse = await fetch(`/api/documents/${documentId}/process`, {
             method: 'POST',
           })
+          const fetchDuration = Date.now() - fetchStartTime
+
+          // ALERT SETELAH DAPAT RESPONSE
+          alert('📡 BACKEND RESPONDED!\n\nStatus: ' + processResponse.status + '\nOK: ' + processResponse.ok + '\nTime: ' + fetchDuration + 'ms')
+
+          console.log('\n' + '📡'.repeat(35))
+          console.log(`📡 [CLIENT] RESPONSE RECEIVED in ${fetchDuration}ms`)
+          console.log('📡'.repeat(35))
+          console.log('   Status:', processResponse.status, processResponse.statusText)
+          console.log('   OK?', processResponse.ok ? '✅ YES' : '❌ NO')
+          console.log('   Headers:', Object.fromEntries(processResponse.headers.entries()))
+          console.log('📡'.repeat(35) + '\n')
 
           if (processResponse.ok) {
             const processData = await processResponse.json()
@@ -353,6 +436,29 @@ export default function DashboardPage() {
             setTimeout(() => {
               router.push(`/dashboard/documents/${documentId}`)
             }, 800)
+          } else {
+            // Process failed - check if it's approval required
+            const errorData = await processResponse.json()
+
+            if (errorData.requiresApproval) {
+              toast({
+                title: '⏳ Menunggu Persetujuan',
+                description: errorData.message || 'Dokumen berhasil diupload dan sedang menunggu persetujuan admin.',
+              })
+            } else {
+              toast({
+                variant: 'destructive',
+                title: 'Gagal Memproses',
+                description: errorData.message || 'Dokumen berhasil diupload tapi gagal diproses otomatis.',
+              })
+            }
+
+            // Close dialog and refresh
+            setUploadDialogOpen(false)
+            setSelectedDocxFile(null)
+            setSelectedPdfFile(null)
+            setTitle('')
+            fetchDocuments()
           }
         } catch (processError) {
           console.error('Error triggering process:', processError)
@@ -476,11 +582,10 @@ export default function DashboardPage() {
                     <div key={day} className="flex-1 flex flex-col items-center">
                       <div className="w-full relative flex items-end justify-center" style={{ height: '160px' }}>
                         <div
-                          className={`w-full ${
-                            isToday
-                              ? 'bg-[#3674B5]'
-                              : 'bg-[#A1E3F9]'
-                          } rounded-lg transition-colors hover:bg-[#578FCA]`}
+                          className={`w-full ${isToday
+                            ? 'bg-[#3674B5]'
+                            : 'bg-[#A1E3F9]'
+                            } rounded-lg transition-colors hover:bg-[#578FCA]`}
                           style={{ height: `${randomHeight}%` }}
                         ></div>
                       </div>
@@ -545,7 +650,30 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-2">
                         {doc.status === 'COMPLETED' && (
                           <span className="px-2 py-1 bg-[#D1F8EF] text-[#3674B5] rounded-md text-xs font-medium">
-                            Completed
+                            Selesai
+                          </span>
+                        )}
+                        {doc.status === 'PROCESSING' && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
+                            Diproses
+                          </span>
+                        )}
+                        {doc.requiresApproval && doc.approvalStatus === 'PENDING' && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md text-xs font-medium flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            Menunggu Persetujuan
+                          </span>
+                        )}
+                        {doc.approvalStatus === 'APPROVED' && doc.status === 'PENDING' && (
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium">
+                            Disetujui
+                          </span>
+                        )}
+                        {doc.approvalStatus === 'REJECTED' && (
+                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-medium">
+                            Ditolak
                           </span>
                         )}
                         <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
@@ -650,9 +778,8 @@ export default function DashboardPage() {
                     {[...Array(20)].map((_, i) => (
                       <div
                         key={`completed-${i}`}
-                        className={`flex-1 h-12 rounded-md ${
-                          i < stats.completed ? 'bg-[#3674B5]' : 'bg-[#D1F8EF]'
-                        }`}
+                        className={`flex-1 h-12 rounded-md ${i < stats.completed ? 'bg-[#3674B5]' : 'bg-[#D1F8EF]'
+                          }`}
                       ></div>
                     ))}
                   </div>
@@ -667,9 +794,8 @@ export default function DashboardPage() {
                     {[...Array(20)].map((_, i) => (
                       <div
                         key={`processing-${i}`}
-                        className={`flex-1 h-12 rounded-md ${
-                          i < stats.processing ? 'bg-[#578FCA]' : 'bg-[#D1F8EF]'
-                        }`}
+                        className={`flex-1 h-12 rounded-md ${i < stats.processing ? 'bg-[#578FCA]' : 'bg-[#D1F8EF]'
+                          }`}
                       ></div>
                     ))}
                   </div>
@@ -684,9 +810,8 @@ export default function DashboardPage() {
                     {[...Array(20)].map((_, i) => (
                       <div
                         key={`failed-${i}`}
-                        className={`flex-1 h-12 rounded-md ${
-                          i < stats.failed ? 'bg-[#A1E3F9]' : 'bg-[#D1F8EF]'
-                        }`}
+                        className={`flex-1 h-12 rounded-md ${i < stats.failed ? 'bg-[#A1E3F9]' : 'bg-[#D1F8EF]'
+                          }`}
                       ></div>
                     ))}
                   </div>
@@ -716,11 +841,10 @@ export default function DashboardPage() {
 
               {!selectedDocxFile ? (
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
-                    dragActiveDocx
-                      ? 'border-[#3674B5] bg-blue-50'
-                      : 'border-gray-300 hover:border-[#3674B5] hover:bg-gray-50'
-                  }`}
+                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${dragActiveDocx
+                    ? 'border-[#3674B5] bg-blue-50'
+                    : 'border-gray-300 hover:border-[#3674B5] hover:bg-gray-50'
+                    }`}
                   onDragEnter={handleDragDocx}
                   onDragLeave={handleDragDocx}
                   onDragOver={handleDragDocx}
@@ -798,11 +922,10 @@ export default function DashboardPage() {
 
               {!selectedPdfFile ? (
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
-                    dragActivePdf
-                      ? 'border-[#578FCA] bg-blue-50'
-                      : 'border-gray-300 hover:border-[#578FCA] hover:bg-gray-50'
-                  }`}
+                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${dragActivePdf
+                    ? 'border-[#578FCA] bg-blue-50'
+                    : 'border-gray-300 hover:border-[#578FCA] hover:bg-gray-50'
+                    }`}
                   onDragEnter={handleDragPdf}
                   onDragLeave={handleDragPdf}
                   onDragOver={handleDragPdf}
