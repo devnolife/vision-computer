@@ -66,9 +66,9 @@ export async function GET(request: NextRequest) {
       }),
     ])
 
-    // Get recent activity
+    // Get recent activity (last 5)
     const recentActivity = await prisma.activityLog.findMany({
-      take: 10,
+      take: 5,
       orderBy: {
         createdAt: 'desc',
       },

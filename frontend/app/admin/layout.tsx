@@ -9,12 +9,10 @@ import {
   Users,
   CreditCard,
   LogOut,
-  Menu,
-  X,
-  Home,
   Package,
   Activity,
   FileCheck,
+  Settings,
 } from 'lucide-react'
 
 export default function AdminLayout({
@@ -57,6 +55,8 @@ export default function AdminLayout({
     { key: '/admin/documents', label: 'Dokumen', icon: FileText },
     { key: '/admin/users', label: 'Pengguna', icon: Users },
     { key: '/admin/packages', label: 'Paket & Harga', icon: Package },
+    { key: '/admin/payments', label: 'Verifikasi Pembayaran', icon: CreditCard },
+    { key: '/admin/settings', label: 'Pengaturan', icon: Settings },
   ]
 
   const getPageTitle = () => {
@@ -67,6 +67,7 @@ export default function AdminLayout({
     if (pathname === '/admin/documents') return 'Dokumen'
     if (pathname === '/admin/users') return 'Pengguna'
     if (pathname === '/admin/packages') return 'Paket & Harga'
+    if (pathname === '/admin/settings') return 'Pengaturan Sistem'
     return 'Admin Panel'
   }
 
@@ -104,7 +105,7 @@ export default function AdminLayout({
               <p className="px-4 text-xs font-semibold text-brand-teal uppercase tracking-wider mb-2">Menu Utama</p>
             </div>
           )}
-          <div className="space-y-1 mb-4">
+          <div className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.key
@@ -123,38 +124,6 @@ export default function AdminLayout({
                 </button>
               )
             })}
-          </div>
-
-          {/* Divider */}
-          {sidebarOpen && (
-            <div className="my-4">
-              <div className="border-t border-gray-200"></div>
-              <p className="px-4 text-xs font-semibold text-brand-teal uppercase tracking-wider mt-4 mb-2">Lainnya</p>
-            </div>
-          )}
-          {!sidebarOpen && <div className="my-3 border-t border-gray-200"></div>}
-
-          {/* Additional Actions */}
-          <div className="space-y-1">
-            <button
-              onClick={() => router.push('/admin/payments')}
-              title={!sidebarOpen ? 'Verifikasi Pembayaran' : undefined}
-              className={`${pathname === '/admin/payments'
-                ? 'bg-brand-primary text-white shadow-sm'
-                : 'text-brand-navy hover:bg-brand-secondary'
-                } w-full flex items-center ${sidebarOpen ? 'space-x-3 px-4' : 'justify-center px-2'} py-3 rounded-lg transition-all`}
-            >
-              <CreditCard className="h-5 w-5 flex-shrink-0" />
-              {sidebarOpen && <span className="font-medium text-sm">Verifikasi Pembayaran</span>}
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              title={!sidebarOpen ? 'User Dashboard' : undefined}
-              className={`w-full flex items-center ${sidebarOpen ? 'space-x-3 px-4' : 'justify-center px-2'} py-3 rounded-lg text-brand-navy hover:bg-brand-secondary transition-all`}
-            >
-              <Home className="h-5 w-5 flex-shrink-0" />
-              {sidebarOpen && <span className="font-medium text-sm">User Dashboard</span>}
-            </button>
           </div>
         </nav>
 
