@@ -1,21 +1,42 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Upload, File, X, CheckCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import {
+  Upload,
+  File,
+  X,
+  CheckCircle,
+  FileText,
+  Clock,
+  AlertCircle,
+  Download,
+  LogOut,
+  User,
+  Mail,
+  Phone,
+  Package as PackageIcon,
+  Calendar,
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Lock,
+  Save
+} from 'lucide-react'
 
 interface Document {
   id: string
@@ -23,29 +44,35 @@ interface Document {
   originalFilename: string
   status: string
   uploadedAt: string
+  createdAt: string
   fileSize: number
+  pdfPath?: string
+  pdfFilename?: string
   requiresApproval?: boolean
   approvalStatus?: string
-  rejectionReason?: string
   analysis?: {
     flagCount: number
     similarityScore?: number
   }
-  bypasses: Array<{
-    id: string
-    outputFilename: string
-    outputPath: string
-    flagsRemoved?: number
-    successRate?: number
-    createdAt: string
-  }>
 }
 
-interface DocumentStats {
-  total: number
-  completed: number
-  processing: number
-  failed: number
+interface UserProfile {
+  name: string
+  email: string
+  username: string
+  phone?: string
+  institution?: string
+  faculty?: string
+  major?: string
+  studentId?: string
+  subscription?: {
+    package: {
+      name: string
+      code: string
+    }
+    expiresAt: string
+    isActive: boolean
+  }
 }
 
 export default function DashboardPage() {
@@ -55,22 +82,34 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [documents, setDocuments] = useState<Document[]>([])
-  const [stats, setStats] = useState<DocumentStats>({
-    total: 0,
-    completed: 0,
-    processing: 0,
-    failed: 0,
-  })
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Upload Dialog State
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [selectedDocxFile, setSelectedDocxFile] = useState<File | null>(null)
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null)
-  const [title, setTitle] = useState('')
+  const [userPackage, setUserPackage] = useState<string>('FREE')
   const [uploading, setUploading] = useState(false)
   const [dragActiveDocx, setDragActiveDocx] = useState(false)
   const [dragActivePdf, setDragActivePdf] = useState(false)
+
+  // Edit Profile Dialog State
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    institution: '',
+    faculty: '',
+    major: '',
+    studentId: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -81,29 +120,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (session?.user?.id) {
       fetchDocuments()
+      fetchUserProfile()
     }
   }, [session])
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch(
-        `/api/documents/user/${session?.user?.id}?limit=5`
-      )
+      const response = await fetch(`/api/documents/user/${session?.user?.id}`)
       const data = await response.json()
 
       if (data.success) {
-        setDocuments(data.data.documents)
-
-        // Calculate stats
-        const allDocs = data.data.documents
-        setStats({
-          total: allDocs.length,
-          completed: allDocs.filter((d: Document) => d.status === 'COMPLETED').length,
-          processing: allDocs.filter((d: Document) =>
-            ['PENDING', 'ANALYZING', 'PROCESSING'].includes(d.status)
-          ).length,
-          failed: allDocs.filter((d: Document) => d.status === 'FAILED').length,
-        })
+        setDocuments(data.data.documents || [])
       }
     } catch (error) {
       console.error('Failed to fetch documents:', error)
@@ -112,46 +139,145 @@ export default function DashboardPage() {
     }
   }
 
-  const handleDownload = async (filename: string) => {
+  const fetchUserProfile = async () => {
     try {
-      const response = await fetch(
-        `/api/files/download?filename=${encodeURIComponent(filename)}`
-      )
+      const response = await fetch('/api/user/profile')
+      const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error('Download failed')
+      if (data.success && data.data) {
+        setUserProfile(data.data)
+        if (data.data.subscription?.package?.name) {
+          setUserPackage(data.data.subscription.package.name)
+        }
       }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      toast({
-        variant: 'success',
-        title: 'Berhasil',
-        description: 'File berhasil diunduh',
-      })
     } catch (error) {
-      console.error('Download error:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Gagal',
-        description: 'Gagal mengunduh file',
-      })
+      console.error('Error fetching user profile:', error)
     }
   }
 
-  const handleUploadClick = () => {
-    setUploadDialogOpen(true)
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/' })
   }
 
-  // Upload Dialog Handlers
+  const handleOpenEditProfile = () => {
+    if (userProfile) {
+      setEditForm({
+        name: userProfile.name || '',
+        email: userProfile.email || '',
+        phone: userProfile.phone || '',
+        institution: userProfile.institution || '',
+        faculty: userProfile.faculty || '',
+        major: userProfile.major || '',
+        studentId: userProfile.studentId || '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+    }
+    setEditProfileOpen(true)
+  }
+
+  const handleSaveProfile = async () => {
+    // Validasi
+    if (!editForm.name || !editForm.email) {
+      toast({
+        variant: 'destructive',
+        title: 'Data Tidak Lengkap',
+        description: 'Nama dan Email wajib diisi',
+      })
+      return
+    }
+
+    // Validasi password jika ingin diubah
+    if (editForm.newPassword) {
+      if (!editForm.currentPassword) {
+        toast({
+          variant: 'destructive',
+          title: 'Password Lama Diperlukan',
+          description: 'Masukkan password lama untuk mengubah password',
+        })
+        return
+      }
+      if (editForm.newPassword !== editForm.confirmPassword) {
+        toast({
+          variant: 'destructive',
+          title: 'Password Tidak Cocok',
+          description: 'Password baru dan konfirmasi tidak cocok',
+        })
+        return
+      }
+      if (editForm.newPassword.length < 6) {
+        toast({
+          variant: 'destructive',
+          title: 'Password Terlalu Pendek',
+          description: 'Password minimal 6 karakter',
+        })
+        return
+      }
+    }
+
+    setIsSaving(true)
+
+    try {
+      const payload: any = {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone || null,
+        institution: editForm.institution || null,
+        faculty: editForm.faculty || null,
+        major: editForm.major || null,
+        studentId: editForm.studentId || null,
+      }
+
+      // Tambahkan password jika ingin diubah
+      if (editForm.newPassword) {
+        payload.currentPassword = editForm.currentPassword
+        payload.newPassword = editForm.newPassword
+      }
+
+      const response = await fetch('/api/profile/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Gagal mengupdate profile')
+      }
+
+      toast({
+        title: 'Berhasil',
+        description: 'Profile berhasil diupdate',
+      })
+
+      // Refresh profile data
+      await fetchUserProfile()
+      setEditProfileOpen(false)
+
+      // Reset password fields
+      setEditForm(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }))
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Gagal',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan saat mengupdate profile',
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Upload handlers (sama seperti sebelumnya)
   const handleDragDocx = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -202,7 +328,7 @@ export default function DashboardPage() {
       return
     }
 
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
       toast({
         variant: 'destructive',
@@ -213,16 +339,6 @@ export default function DashboardPage() {
     }
 
     setSelectedDocxFile(file)
-
-    const fileNameWithoutExt = file.name.replace(/\.docx$/i, '')
-    const timestamp = new Date().toLocaleString('id-ID', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).replace(/[/,]/g, '-').replace(/\s/g, '_')
-    setTitle(`${fileNameWithoutExt}_${timestamp}`)
   }
 
   const handleFileSelectPdf = (file: File) => {
@@ -235,7 +351,7 @@ export default function DashboardPage() {
       return
     }
 
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
       toast({
         variant: 'destructive',
@@ -268,34 +384,31 @@ export default function DashboardPage() {
 
   const handleRemovePdfFile = () => {
     setSelectedPdfFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
-  const handleUpload = async () => {
-    // ALERT UNTUK MEMASTIKAN FUNCTION DIPANGGIL
-    alert('🎬 UPLOAD BUTTON CLICKED!\n\nDOCX: ' + (selectedDocxFile?.name || 'NO') + '\nPDF: ' + (selectedPdfFile?.name || 'NO'))
-
-    console.log('\n' + '🎬'.repeat(35))
-    console.log('🎬 [CLIENT] USER CLICKED UPLOAD BUTTON')
-    console.log('🎬'.repeat(35))
-    console.log('   Title:', title)
-    console.log('   DOCX File:', selectedDocxFile?.name || 'NOT SELECTED')
-    console.log('   PDF File:', selectedPdfFile?.name || 'NOT SELECTED')
-    console.log('   DOCX Size:', selectedDocxFile?.size || 0, 'bytes')
-    console.log('   PDF Size:', selectedPdfFile?.size || 0, 'bytes')
-    console.log('🎬'.repeat(35) + '\n')
-
+  const handleUploadSubmit = async () => {
     if (!selectedDocxFile) {
-      console.error('❌ [ERROR] No DOCX file selected!')
       toast({
         variant: 'destructive',
-        title: 'Peringatan',
-        description: 'Harap pilih file DOCX',
+        title: 'File Belum Dipilih',
+        description: 'Silakan pilih file DOCX terlebih dahulu',
+      })
+      return
+    }
+
+    if (!selectedPdfFile) {
+      toast({
+        variant: 'destructive',
+        title: 'File PDF Belum Dipilih',
+        description: 'File PDF Turnitin wajib diupload',
       })
       return
     }
 
     setUploading(true)
-    console.log('⏳ Setting uploading state to TRUE...')
 
     try {
       console.log('\n📤 [STEP 1] Creating FormData...')
@@ -323,6 +436,17 @@ export default function DashboardPage() {
         throw new Error(uploadData.error || 'Gagal mengupload file')
       }
 
+      // Generate auto title
+      const fileNameWithoutExt = selectedDocxFile.name.replace(/\.[^/.]+$/, '')
+      const timestamp = new Date().toLocaleString('id-ID', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).replace(/[/,]/g, '-').replace(/\s/g, '_')
+      const autoTitle = `${fileNameWithoutExt}_${timestamp}`
+
       console.log('\n📝 [STEP 3] Creating document record in /api/documents/create...')
       const documentResponse = await fetch('/api/documents/create', {
         method: 'POST',
@@ -330,7 +454,7 @@ export default function DashboardPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: title.trim(),
+          title: autoTitle,
           originalFilename: uploadData.data.docxFile.originalName,
           fileSize: uploadData.data.docxFile.size,
           fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -338,6 +462,7 @@ export default function DashboardPage() {
           userId: session?.user?.id,
           pdfPath: uploadData.data.pdfFile?.path || null,
           pdfFilename: uploadData.data.pdfFile?.originalName || null,
+          fileHash: uploadData.data.docxFile.hash || null,
         }),
       })
 
@@ -349,6 +474,21 @@ export default function DashboardPage() {
         throw new Error(documentData.error || 'Gagal membuat record dokumen')
       }
 
+      // Check if this is a duplicate document
+      if (documentData.isDuplicate) {
+        toast({
+          title: 'Dokumen Duplikat Terdeteksi',
+          description: documentData.message || 'Dokumen yang sama sudah pernah diproses. Hasil sebelumnya akan digunakan.',
+          duration: 5000,
+        })
+
+        setSelectedDocxFile(null)
+        setSelectedPdfFile(null)
+        setUploadDialogOpen(false)
+        fetchDocuments()
+        return
+      }
+
       const documentId = documentData.data.id
       const hasPdfFile = selectedPdfFile || documentData.data.pdfPath
 
@@ -356,7 +496,7 @@ export default function DashboardPage() {
       console.log('📋 [CLIENT - DASHBOARD] Document created successfully')
       console.log('='.repeat(70))
       console.log('   Document ID:', documentId)
-      console.log('   Title:', title)
+      console.log('   Title:', autoTitle)
       console.log('   Selected DOCX File:', selectedDocxFile?.name || 'NO')
       console.log('   Selected PDF File:', selectedPdfFile?.name || 'NO')
       console.log('   PDF Path in DB:', documentData.data.pdfPath || 'NO')
@@ -371,21 +511,18 @@ export default function DashboardPage() {
           description: 'Dokumen DOCX berhasil diupload. Upload PDF Turnitin untuk memulai proses bypass.',
         })
 
-        setUploadDialogOpen(false)
         setSelectedDocxFile(null)
         setSelectedPdfFile(null)
-        setTitle('')
+        setUploadDialogOpen(false)
         fetchDocuments()
         return
       }
 
+      // Trigger background processing (PDF is now required)
       if (hasPdfFile && documentId) {
         try {
-          // ALERT SEBELUM PANGGIL BACKEND
-          alert('🚀 WILL CALL BACKEND!\n\nDocument ID: ' + documentId + '\nEndpoint: /api/documents/' + documentId + '/process')
-
           console.log('\n' + '🚀'.repeat(35))
-          console.log('🚀 [CLIENT] CALLING NEXT.JS API TO PROCESS DOCUMENT')
+          console.log('🚀 [CLIENT - DASHBOARD] CALLING NEXT.JS API TO PROCESS DOCUMENT')
           console.log('🚀'.repeat(35))
           console.log('   Document ID:', documentId)
           console.log('   Target Endpoint:', `/api/documents/${documentId}/process`)
@@ -393,49 +530,41 @@ export default function DashboardPage() {
           console.log('   Timestamp:', new Date().toISOString())
           console.log('🚀'.repeat(35) + '\n')
 
-          console.log('>>> Calling fetch() to Next.js API endpoint...')
-
           const fetchStartTime = Date.now()
           const processResponse = await fetch(`/api/documents/${documentId}/process`, {
             method: 'POST',
           })
           const fetchDuration = Date.now() - fetchStartTime
 
-          // ALERT SETELAH DAPAT RESPONSE
-          alert('📡 BACKEND RESPONDED!\n\nStatus: ' + processResponse.status + '\nOK: ' + processResponse.ok + '\nTime: ' + fetchDuration + 'ms')
-
           console.log('\n' + '📡'.repeat(35))
-          console.log(`📡 [CLIENT] RESPONSE RECEIVED in ${fetchDuration}ms`)
+          console.log(`📡 [CLIENT - DASHBOARD] RESPONSE RECEIVED in ${fetchDuration}ms`)
           console.log('📡'.repeat(35))
           console.log('   Status:', processResponse.status, processResponse.statusText)
           console.log('   OK?', processResponse.ok ? '✅ YES' : '❌ NO')
-          console.log('   Headers:', Object.fromEntries(processResponse.headers.entries()))
           console.log('📡'.repeat(35) + '\n')
 
           if (processResponse.ok) {
             const processData = await processResponse.json()
 
+            // Save jobId to localStorage for progress tracking
             if (processData.data?.jobId) {
               localStorage.setItem(`doc-job-${documentId}`, processData.data.jobId)
             }
 
             toast({
-              variant: 'success',
               title: 'Proses Dimulai',
-              description: 'Dokumen sedang diproses...',
+              description: 'Dokumen sedang diproses. Anda bisa melihat progressnya di halaman dokumen.',
             })
 
-            // Close dialog and refresh
-            setUploadDialogOpen(false)
             setSelectedDocxFile(null)
             setSelectedPdfFile(null)
-            setTitle('')
+            setUploadDialogOpen(false)
             fetchDocuments()
 
-            // Redirect to document detail
+            // Optional: Redirect to document detail page
             setTimeout(() => {
               router.push(`/dashboard/documents/${documentId}`)
-            }, 800)
+            }, 1500)
           } else {
             // Process failed - check if it's approval required
             const errorData = await processResponse.json()
@@ -453,39 +582,24 @@ export default function DashboardPage() {
               })
             }
 
-            // Close dialog and refresh
-            setUploadDialogOpen(false)
             setSelectedDocxFile(null)
             setSelectedPdfFile(null)
-            setTitle('')
+            setUploadDialogOpen(false)
             fetchDocuments()
           }
         } catch (processError) {
           console.error('Error triggering process:', processError)
           toast({
-            variant: 'success',
+            variant: 'warning',
             title: 'Upload Berhasil',
-            description: 'Dokumen berhasil diupload',
+            description: 'Dokumen berhasil diupload, tapi gagal memulai proses otomatis. Silakan coba proses manual dari halaman dokumen.',
           })
 
-          setUploadDialogOpen(false)
           setSelectedDocxFile(null)
           setSelectedPdfFile(null)
-          setTitle('')
+          setUploadDialogOpen(false)
           fetchDocuments()
         }
-      } else {
-        toast({
-          variant: 'success',
-          title: 'Berhasil',
-          description: 'Dokumen berhasil diupload',
-        })
-
-        setUploadDialogOpen(false)
-        setSelectedDocxFile(null)
-        setSelectedPdfFile(null)
-        setTitle('')
-        fetchDocuments()
       }
     } catch (error) {
       console.error('Upload error:', error)
@@ -499,413 +613,710 @@ export default function DashboardPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'text-green-600 bg-green-50'
-      case 'PROCESSING':
-      case 'ANALYZING':
-        return 'text-blue-600 bg-blue-50'
-      case 'FAILED':
-        return 'text-red-600 bg-red-50'
-      default:
-        return 'text-gray-600 bg-gray-50'
-    }
-  }
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const sizes = ['Bytes', 'KB', 'MB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '-'
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch (error) {
+      return '-'
+    }
   }
 
-  if (status === 'loading' || isLoading) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return (
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-xs font-bold shadow-md">
+            <CheckCircle className="h-3.5 w-3.5" />
+            <span>Selesai</span>
+          </div>
+        )
+      case 'PROCESSING':
+      case 'ANALYZING':
+        return (
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-md animate-pulse">
+            <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: '2s' }} />
+            <span>Proses</span>
+          </div>
+        )
+      case 'FAILED':
+        return (
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl text-xs font-bold shadow-md">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>Gagal</span>
+          </div>
+        )
+      default:
+        return (
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-gray-400 to-gray-600 text-white rounded-xl text-xs font-bold shadow-md">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Pending</span>
+          </div>
+        )
+    }
+  }
+
+  const filteredDocuments = documents.filter(doc =>
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.originalFilename.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  if (isLoading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-[60vh]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Memuat...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-300 opacity-20 mx-auto"></div>
+          </div>
+          <p className="text-gray-700 font-medium mt-4">Memuat dashboard...</p>
         </div>
       </div>
     )
   }
 
-  if (!session) {
-    return null
-  }
-
   return (
-    <div>
-      <div className="max-w-[1400px] mx-auto">
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Column - Main Stats Card */}
-          <div className="col-span-12 lg:col-span-7">
-            <div className="p-8 bg-white rounded-2xl shadow-sm border border-gray-200 h-full">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Aktivitas Dokumen</h2>
-                  <p className="text-sm text-gray-500">Track your progress</p>
-                </div>
-                <select className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300">
-                  <option>Minggu Ini</option>
-                  <option>Bulan Ini</option>
-                  <option>Tahun Ini</option>
-                </select>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Main Container - Full Page Layout */}
+      <div className="flex h-screen">
 
-              {/* Stats Display */}
-              <div className="mb-8">
-                <div className="text-sm text-gray-500 mb-2">{stats.total} Total Documents</div>
-                <div className="text-5xl font-bold text-gray-900 mb-2">+{stats.completed}</div>
-                <p className="text-gray-500 text-sm">Documents processed this week</p>
-              </div>
+        {/* LEFT SIDE - Document List (70%) */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
 
-              {/* Chart Area - Simple Bar Visualization */}
-              <div className="relative h-48 flex items-end justify-around gap-3">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
-                  const randomHeight = Math.random() * 80 + 40
-                  const isToday = index === 3 // Wednesday as example
-                  return (
-                    <div key={day} className="flex-1 flex flex-col items-center">
-                      <div className="w-full relative flex items-end justify-center" style={{ height: '160px' }}>
-                        <div
-                          className={`w-full ${isToday
-                            ? 'bg-[#3674B5]'
-                            : 'bg-[#A1E3F9]'
-                            } rounded-lg transition-colors hover:bg-[#578FCA]`}
-                          style={{ height: `${randomHeight}%` }}
-                        ></div>
-                      </div>
-                      <div className={`mt-3 w-9 h-9 ${isToday ? 'bg-[#3674B5] text-white' : 'bg-[#D1F8EF] text-gray-700'} rounded-lg flex items-center justify-center font-medium`}>
-                        <span className="text-xs">{day}</span>
-                      </div>
-                    </div>
-                  )
-                })}
+          {/* Document List */}
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            {/* Search and Upload */}
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Dokumen Saya</h2>
+                <Button
+                  onClick={() => setUploadDialogOpen(true)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari dokumen..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 h-11 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-sm"
+                />
               </div>
             </div>
-          </div>
 
-          {/* Right Column - Recent Documents */}
-          <div className="col-span-12 lg:col-span-5">
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-200 h-full">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Recent Documents</h3>
-                  <p className="text-xs text-gray-500 mt-1">Your latest uploads</p>
+            {filteredDocuments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <FileText className="h-12 w-12 text-gray-400" />
                 </div>
-                <Link href="/dashboard/documents">
-                  <button className="px-4 py-2 bg-[#A1E3F9] hover:bg-[#578FCA] text-gray-800 hover:text-white rounded-lg text-sm font-medium transition-colors">
-                    See All →
-                  </button>
-                </Link>
-              </div>
-
-              <div className="space-y-3">
-                {documents.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-500 text-sm mb-4">Belum ada dokumen</p>
-                    <Button
-                      onClick={handleUploadClick}
-                      className="bg-[#3674B5] hover:bg-[#578FCA] text-white rounded-lg h-10 px-6 text-sm"
-                    >
-                      Upload Dokumen
-                    </Button>
-                  </div>
-                ) : (
-                  documents.slice(0, 4).map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div className="w-11 h-11 bg-[#D1F8EF] rounded-lg flex items-center justify-center flex-shrink-0">
-                          <svg className="w-5 h-5 text-[#3674B5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 text-sm truncate">{doc.title}</h4>
-                          <p className="text-xs text-gray-500 truncate">{formatFileSize(doc.fileSize)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {doc.status === 'COMPLETED' && (
-                          <span className="px-2 py-1 bg-[#D1F8EF] text-[#3674B5] rounded-md text-xs font-medium">
-                            Selesai
-                          </span>
-                        )}
-                        {doc.status === 'PROCESSING' && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
-                            Diproses
-                          </span>
-                        )}
-                        {doc.requiresApproval && doc.approvalStatus === 'PENDING' && (
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md text-xs font-medium flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                            </svg>
-                            Menunggu Persetujuan
-                          </span>
-                        )}
-                        {doc.approvalStatus === 'APPROVED' && doc.status === 'PENDING' && (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium">
-                            Disetujui
-                          </span>
-                        )}
-                        {doc.approvalStatus === 'REJECTED' && (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-medium">
-                            Ditolak
-                          </span>
-                        )}
-                        <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
-                          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {searchQuery ? 'Tidak ada dokumen ditemukan' : 'Belum ada dokumen'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {searchQuery ? 'Coba kata kunci lain' : 'Mulai upload dokumen pertama Anda'}
+                </p>
+                {!searchQuery && (
+                  <Button
+                    onClick={() => setUploadDialogOpen(true)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Upload Dokumen Pertama
+                  </Button>
                 )}
               </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredDocuments.map((doc) => (
+                  <Card
+                    key={doc.id}
+                    className="hover:shadow-lg transition-all cursor-pointer border-0 bg-white/80 backdrop-blur"
+                    onClick={() => router.push(`/dashboard/documents/${doc.id}`)}
+                  >
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-4">
+                        {/* Icon */}
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                          <FileText className="h-6 w-6 text-white" />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-base font-semibold text-gray-900 truncate">
+                              {doc.title}
+                            </h3>
+                            {getStatusBadge(doc.status)}
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <File className="h-3 w-3" />
+                              {doc.originalFilename}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(doc.uploadedAt || doc.createdAt)}
+                            </span>
+                            <span>{formatFileSize(doc.fileSize)}</span>
+                          </div>
+                        </div>
+
+                        {/* Action */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-600 hover:bg-blue-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/dashboard/documents/${doc.id}`)
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Lihat
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT SIDE - Profile Section (30%) */}
+        <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+
+          {/* Profile Header */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                <User className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-gray-900 truncate">
+                  {userProfile?.name || session?.user?.name || 'User'}
+                </h2>
+                <p className="text-sm text-gray-600 truncate">
+                  {userProfile?.email || session?.user?.email || '-'}
+                </p>
+              </div>
             </div>
+
+            {/* Package Badge */}
+            {userProfile?.subscription?.package && (
+              <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <PackageIcon className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-semibold text-amber-900">Paket Aktif</span>
+                </div>
+                <p className="text-sm font-bold text-amber-900">
+                  {userProfile.subscription.package.name}
+                </p>
+                {userProfile.subscription.expiresAt && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Berakhir: {formatDate(userProfile.subscription.expiresAt)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Bottom Row - Three Cards */}
-          {/* Quick Actions Card */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Aksi Cepat</h3>
-              <p className="text-sm text-gray-500 mb-6">Upload dan kelola dokumen Anda</p>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-[#D1F8EF] rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[#3674B5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <button className="flex-1 text-left">
-                    <p className="font-medium text-gray-900 text-sm">Upload Dokumen</p>
-                    <p className="text-xs text-gray-500">Tambah dokumen baru</p>
-                  </button>
-                  <button className="w-8 h-8 bg-[#3674B5] hover:bg-[#578FCA] rounded-lg flex items-center justify-center transition-colors">
-                    <span className="text-white text-lg">+</span>
-                  </button>
-                </div>
-              </div>
-
+          {/* Profile Details */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-700">Data Diri</h3>
               <Button
-                onClick={handleUploadClick}
-                className="w-full bg-[#3674B5] hover:bg-[#578FCA] text-white rounded-lg h-11"
+                variant="ghost"
+                size="sm"
+                onClick={handleOpenEditProfile}
+                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8"
               >
-                Upload Sekarang
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <Edit className="h-4 w-4 mr-1.5" />
+                Edit
               </Button>
             </div>
-          </div>
 
-          {/* Stats Summary Card */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Ringkasan Status</h3>
-              <p className="text-sm text-gray-500 mb-6">Statistik dokumen Anda</p>
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Dokumen Selesai</span>
-                  <span className="text-2xl font-semibold text-gray-900">{stats.completed}</span>
+            <div className="space-y-4">
+              {/* Nama Lengkap */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <User className="h-4 w-4 text-blue-600" />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Sedang Diproses</span>
-                  <span className="text-2xl font-semibold text-gray-900">{stats.processing}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Dokumen</span>
-                  <span className="text-2xl font-semibold text-gray-900">{stats.total}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-600 mb-0.5">Nama Lengkap</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {userProfile?.name || session?.user?.name || '-'}
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-6 h-2 bg-[#A1E3F9] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#3674B5] rounded-full transition-all"
-                  style={{ width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Tingkat Keberhasilan
-              </p>
-            </div>
-          </div>
-
-          {/* Activity Progress Card */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Progress Dokumen</h3>
-                <button className="text-sm text-gray-500 hover:text-gray-700">
-                  Hari ini
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600">Berhasil diproses</span>
-                    <span className="font-semibold text-gray-900">{stats.completed}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    {[...Array(20)].map((_, i) => (
-                      <div
-                        key={`completed-${i}`}
-                        className={`flex-1 h-12 rounded-md ${i < stats.completed ? 'bg-[#3674B5]' : 'bg-[#D1F8EF]'
-                          }`}
-                      ></div>
-                    ))}
-                  </div>
+              {/* Email */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Mail className="h-4 w-4 text-purple-600" />
                 </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600">Sedang diproses</span>
-                    <span className="font-semibold text-gray-900">{stats.processing}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    {[...Array(20)].map((_, i) => (
-                      <div
-                        key={`processing-${i}`}
-                        className={`flex-1 h-12 rounded-md ${i < stats.processing ? 'bg-[#578FCA]' : 'bg-[#D1F8EF]'
-                          }`}
-                      ></div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600">Pending/Gagal</span>
-                    <span className="font-semibold text-gray-900">{stats.failed}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    {[...Array(20)].map((_, i) => (
-                      <div
-                        key={`failed-${i}`}
-                        className={`flex-1 h-12 rounded-md ${i < stats.failed ? 'bg-[#A1E3F9]' : 'bg-[#D1F8EF]'
-                          }`}
-                      ></div>
-                    ))}
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-600 mb-0.5">Email</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {userProfile?.email || session?.user?.email || '-'}
+                  </p>
                 </div>
               </div>
+
+              {/* Phone */}
+              {userProfile?.phone && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-600 mb-0.5">Telepon</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {userProfile.phone}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Divider */}
+              {(userProfile?.institution || userProfile?.faculty || userProfile?.major || userProfile?.studentId) && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Informasi Akademik</h3>
+                </div>
+              )}
+
+              {/* Institution */}
+              {userProfile?.institution && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-600 mb-0.5">Institusi</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {userProfile.institution}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Faculty */}
+              {userProfile?.faculty && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-600 mb-0.5">Fakultas</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {userProfile.faculty}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Major/Jurusan */}
+              {userProfile?.major && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-600 mb-0.5">Program Studi</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {userProfile.major}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Student ID */}
+              {userProfile?.studentId && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-600 mb-0.5">NIM/NIS</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {userProfile.studentId}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900">Upload Dokumen</DialogTitle>
-            <DialogDescription>
-              Unggah file DOCX dan opsional PDF Turnitin untuk analisis
-            </DialogDescription>
+      {/* Edit Profile Dialog */}
+      <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Edit className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  Edit Profile
+                </DialogTitle>
+                <p className="text-sm text-gray-600 mt-0.5">Update informasi pribadi dan akademik Anda</p>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-6 mt-4">
-            {/* DOCX File Upload */}
+          <div className="space-y-6 mt-6">
+            {/* Data Pribadi */}
             <div>
-              <Label className="text-base font-semibold text-gray-900 mb-3 block">
-                File DOCX <span className="text-red-500">*</span>
-              </Label>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Data Pribadi</h3>
+              <div className="space-y-4">
+                {/* Nama Lengkap */}
+                <div>
+                  <Label htmlFor="edit-name" className="text-sm font-medium text-gray-700">
+                    Nama Lengkap <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="edit-name"
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="Masukkan nama lengkap"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
 
+                {/* Email */}
+                <div>
+                  <Label htmlFor="edit-email" className="text-sm font-medium text-gray-700">
+                    Email <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="email@example.com"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* Telepon */}
+                <div>
+                  <Label htmlFor="edit-phone" className="text-sm font-medium text-gray-700">
+                    Nomor Telepon
+                  </Label>
+                  <Input
+                    id="edit-phone"
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="081234567890"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Informasi Akademik */}
+            <div className="border-t border-gray-200 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Informasi Akademik</h3>
+              <div className="space-y-4">
+                {/* Institusi */}
+                <div>
+                  <Label htmlFor="edit-institution" className="text-sm font-medium text-gray-700">
+                    Institusi/Universitas
+                  </Label>
+                  <Input
+                    id="edit-institution"
+                    type="text"
+                    value={editForm.institution}
+                    onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
+                    placeholder="Contoh: Universitas Indonesia"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* Fakultas */}
+                <div>
+                  <Label htmlFor="edit-faculty" className="text-sm font-medium text-gray-700">
+                    Fakultas
+                  </Label>
+                  <Input
+                    id="edit-faculty"
+                    type="text"
+                    value={editForm.faculty}
+                    onChange={(e) => setEditForm({ ...editForm, faculty: e.target.value })}
+                    placeholder="Contoh: Fakultas Ilmu Komputer"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* Program Studi */}
+                <div>
+                  <Label htmlFor="edit-major" className="text-sm font-medium text-gray-700">
+                    Program Studi/Jurusan
+                  </Label>
+                  <Input
+                    id="edit-major"
+                    type="text"
+                    value={editForm.major}
+                    onChange={(e) => setEditForm({ ...editForm, major: e.target.value })}
+                    placeholder="Contoh: Sistem Informasi"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* NIM/NIS */}
+                <div>
+                  <Label htmlFor="edit-studentId" className="text-sm font-medium text-gray-700">
+                    NIM/NIS
+                  </Label>
+                  <Input
+                    id="edit-studentId"
+                    type="text"
+                    value={editForm.studentId}
+                    onChange={(e) => setEditForm({ ...editForm, studentId: e.target.value })}
+                    placeholder="Contoh: 2021010001"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Ubah Password */}
+            <div className="border-t border-gray-200 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Ubah Password (Opsional)
+              </h3>
+              <div className="space-y-4">
+                {/* Password Lama */}
+                <div>
+                  <Label htmlFor="edit-current-password" className="text-sm font-medium text-gray-700">
+                    Password Lama
+                  </Label>
+                  <Input
+                    id="edit-current-password"
+                    type="password"
+                    value={editForm.currentPassword}
+                    onChange={(e) => setEditForm({ ...editForm, currentPassword: e.target.value })}
+                    placeholder="Masukkan password lama"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* Password Baru */}
+                <div>
+                  <Label htmlFor="edit-new-password" className="text-sm font-medium text-gray-700">
+                    Password Baru
+                  </Label>
+                  <Input
+                    id="edit-new-password"
+                    type="password"
+                    value={editForm.newPassword}
+                    onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                    placeholder="Minimal 6 karakter"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                {/* Konfirmasi Password */}
+                <div>
+                  <Label htmlFor="edit-confirm-password" className="text-sm font-medium text-gray-700">
+                    Konfirmasi Password Baru
+                  </Label>
+                  <Input
+                    id="edit-confirm-password"
+                    type="password"
+                    value={editForm.confirmPassword}
+                    onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                    placeholder="Ketik ulang password baru"
+                    className="mt-1.5"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-blue-800">
+                    💡 <strong>Tips:</strong> Kosongkan field password jika tidak ingin mengubah password
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <Button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="flex-1 h-11 text-base bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+              >
+                {isSaving ? (
+                  <div className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menyimpan...
+                  </div>
+                ) : (
+                  <>
+                    <Save className="h-5 w-5 mr-2" />
+                    Simpan Perubahan
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditProfileOpen(false)}
+                disabled={isSaving}
+                className="px-8 h-11 border-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Dialog - Modern Design (sama seperti sebelumnya) */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-blue-50/50 via-white to-purple-50/50">
+          <DialogHeader className="pb-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Upload className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  Upload Dokumen Baru
+                </DialogTitle>
+                <p className="text-sm text-gray-600 mt-0.5">Unggah dokumen DOCX dan PDF Turnitin</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-6">
+            {/* Info Banner */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-yellow-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xs font-semibold text-yellow-900 mb-1">
+                    ℹ️ Informasi Penting
+                  </h3>
+                  <ul className="text-xs text-yellow-800 space-y-0.5">
+                    <li>• Dokumen akan menunggu persetujuan admin sebelum diproses</li>
+                    <li>• Proses dimulai otomatis setelah disetujui</li>
+                    <li>• Kedua file (DOCX + PDF) wajib diupload</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* DOCX Upload */}
+            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-xs">1</div>
+                <Label className="text-base font-semibold text-gray-900">
+                  File DOCX Original <span className="text-red-500">*</span>
+                </Label>
+              </div>
               {!selectedDocxFile ? (
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${dragActiveDocx
-                    ? 'border-[#3674B5] bg-blue-50'
-                    : 'border-gray-300 hover:border-[#3674B5] hover:bg-gray-50'
-                    }`}
                   onDragEnter={handleDragDocx}
                   onDragLeave={handleDragDocx}
                   onDragOver={handleDragDocx}
                   onDrop={handleDropDocx}
+                  className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-300 ${dragActiveDocx
+                    ? 'border-blue-400 bg-blue-50 scale-105'
+                    : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".docx"
-                    onChange={handleFileInputChange}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                  <div className="w-16 h-16 bg-[#D1F8EF] rounded-xl mx-auto mb-4 flex items-center justify-center">
-                    <Upload className="h-8 w-8 text-[#3674B5]" />
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg">
+                    <Upload className="h-8 w-8 text-white" />
                   </div>
-                  <p className="text-lg font-medium text-gray-900 mb-2">
+                  <p className="text-base font-semibold text-gray-900 mb-1">
                     Drag & drop file DOCX
                   </p>
-                  <p className="text-sm text-gray-500 mb-4">Atau klik untuk memilih file</p>
-                  <Button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-[#3674B5] hover:bg-[#578FCA] text-white"
-                    disabled={uploading}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Pilih File DOCX
-                  </Button>
-                  <p className="text-xs text-gray-400 mt-3">
+                  <p className="text-sm text-gray-600 mb-4">Atau klik untuk memilih file</p>
+                  <p className="text-xs text-gray-400">
                     Format: .docx | Maksimal: 10MB
                   </p>
                 </div>
               ) : (
-                <div className="bg-[#D1F8EF] border border-[#578FCA] rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className="w-12 h-12 bg-[#3674B5] rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
                         <File className="h-6 w-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
                           {selectedDocxFile.name}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs text-gray-600 mt-0.5">
                           {formatFileSize(selectedDocxFile.size)}
                         </p>
                         <div className="flex items-center mt-2">
-                          <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                          <span className="text-sm text-green-700 font-medium">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1.5" />
+                          <span className="text-xs text-green-700 font-medium">
                             File siap diupload
                           </span>
                         </div>
                       </div>
                     </div>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={handleRemoveDocxFile}
                       disabled={uploading}
-                      className="text-red-600 hover:bg-red-50"
+                      className="text-red-500 hover:bg-red-50 hover:text-red-600 h-9 w-9 p-0"
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -914,83 +1325,66 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* PDF File Upload (Optional) */}
-            <div>
-              <Label className="text-base font-semibold text-gray-900 mb-3 block">
-                File PDF Turnitin <span className="text-gray-500 text-sm">(Opsional)</span>
-              </Label>
-
+            {/* PDF Upload */}
+            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center text-white font-bold text-xs">2</div>
+                <Label className="text-base font-semibold text-gray-900">
+                  File PDF Turnitin <span className="text-red-500">*</span>
+                </Label>
+              </div>
               {!selectedPdfFile ? (
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${dragActivePdf
-                    ? 'border-[#578FCA] bg-blue-50'
-                    : 'border-gray-300 hover:border-[#578FCA] hover:bg-gray-50'
-                    }`}
                   onDragEnter={handleDragPdf}
                   onDragLeave={handleDragPdf}
                   onDragOver={handleDragPdf}
                   onDrop={handleDropPdf}
+                  className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-300 ${dragActivePdf
+                    ? 'border-purple-400 bg-purple-50 scale-105'
+                    : 'border-gray-200 hover:border-purple-400 hover:bg-purple-50'
+                    }`}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleFileSelectPdf(e.target.files[0])
-                      }
-                    }}
-                    className="hidden"
-                    disabled={uploading}
-                    id="pdf-input"
-                  />
-                  <div className="w-16 h-16 bg-[#A1E3F9] rounded-xl mx-auto mb-4 flex items-center justify-center">
-                    <Upload className="h-8 w-8 text-[#3674B5]" />
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg">
+                    <Upload className="h-8 w-8 text-white" />
                   </div>
-                  <p className="text-lg font-medium text-gray-900 mb-2">
+                  <p className="text-base font-semibold text-gray-900 mb-1">
                     Drag & drop file PDF
                   </p>
-                  <p className="text-sm text-gray-500 mb-4">Untuk analisis lebih akurat</p>
-                  <Button
-                    type="button"
-                    onClick={() => document.getElementById('pdf-input')?.click()}
-                    className="bg-[#578FCA] hover:bg-[#3674B5] text-white"
-                    disabled={uploading}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Pilih File PDF
-                  </Button>
-                  <p className="text-xs text-gray-400 mt-3">
+                  <p className="text-sm text-gray-600 mb-4">Atau klik untuk memilih file</p>
+                  <p className="text-xs text-gray-400">
                     Format: .pdf | Maksimal: 10MB
                   </p>
                 </div>
               ) : (
-                <div className="bg-[#A1E3F9] border border-[#578FCA] rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className="w-12 h-12 bg-[#3674B5] rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
                         <File className="h-6 w-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
                           {selectedPdfFile.name}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs text-gray-600 mt-0.5">
                           {formatFileSize(selectedPdfFile.size)}
                         </p>
                         <div className="flex items-center mt-2">
-                          <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                          <span className="text-sm text-green-700 font-medium">
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-1.5" />
+                          <span className="text-xs text-green-700 font-medium">
                             File siap diupload
                           </span>
                         </div>
                       </div>
                     </div>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={handleRemovePdfFile}
                       disabled={uploading}
-                      className="text-red-600 hover:bg-red-50"
+                      className="text-red-500 hover:bg-red-50 hover:text-red-600 h-9 w-9 p-0"
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -999,12 +1393,48 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Upload Button */}
+            {/* Hidden Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".docx,.pdf"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+
+            {/* Info Box */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 shadow-sm">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center text-sm">
+                <div className="w-5 h-5 bg-amber-500 rounded-full mr-2 flex items-center justify-center text-xs text-white font-bold">i</div>
+                Informasi Penting
+              </h4>
+              <ul className="text-xs text-gray-700 space-y-2">
+                <li className="flex items-start">
+                  <span className="text-amber-600 mr-2 font-bold">✓</span>
+                  <span>File DOCX original <strong>wajib</strong> diunggah</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-amber-600 mr-2 font-bold">✓</span>
+                  <span>File PDF Turnitin <strong>wajib</strong> diunggah</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-amber-600 mr-2 font-bold">✓</span>
+                  <span>Ukuran file maksimal <strong>10MB</strong> per file</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-amber-600 mr-2 font-bold">✓</span>
+                  <span>Nama otomatis: <strong>NamaFile_Paket_KodeUnik</strong></span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
-                onClick={handleUpload}
-                disabled={!selectedDocxFile || uploading}
-                className="flex-1 h-12 bg-[#3674B5] hover:bg-[#578FCA] text-white font-semibold disabled:opacity-50"
+                type="button"
+                onClick={handleUploadSubmit}
+                disabled={uploading || !selectedDocxFile || !selectedPdfFile}
+                className="flex-1 h-12 text-base bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploading ? (
                   <div className="flex items-center">
@@ -1012,39 +1442,28 @@ export default function DashboardPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Mengupload...
+                    Mengupload DOCX + PDF...
                   </div>
                 ) : (
                   <>
                     <Upload className="h-5 w-5 mr-2" />
-                    {selectedDocxFile && selectedPdfFile ? 'Upload Dokumen & PDF' : 'Upload Dokumen'}
+                    {selectedDocxFile && selectedPdfFile ? 'Upload DOCX + PDF' : 'Upload Dokumen'}
                   </>
                 )}
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => {
                   setUploadDialogOpen(false)
                   setSelectedDocxFile(null)
                   setSelectedPdfFile(null)
-                  setTitle('')
                 }}
                 disabled={uploading}
-                className="px-8 h-12"
+                className="px-8 h-12 border-2 border-gray-200 text-gray-700 hover:bg-gray-50"
               >
                 Batal
               </Button>
-            </div>
-
-            {/* Info */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-sm text-amber-900 font-medium mb-2">Informasi:</p>
-              <ul className="text-xs text-amber-800 space-y-1">
-                <li>• File DOCX wajib diunggah</li>
-                <li>• File PDF Turnitin opsional untuk analisis lebih akurat</li>
-                <li>• Ukuran maksimal 10MB per file</li>
-                <li>• Dokumen akan dianalisis secara otomatis setelah upload</li>
-              </ul>
             </div>
           </div>
         </DialogContent>

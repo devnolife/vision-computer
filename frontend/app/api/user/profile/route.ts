@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getUserActiveSubscription } from '@/lib/package-access'
+import prisma from '@/lib/prisma'
 
 /**
  * GET /api/user/profile
@@ -20,25 +21,34 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id
 
+    // Get user with profile
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: true,
+      },
+    })
+
     // Get user's active subscription
     const subscription = await getUserActiveSubscription(userId)
 
     const response = {
       success: true,
       data: {
-        user: {
-          id: userId,
-          email: session.user.email,
-          name: session.user.name,
-        },
+        name: user?.name || session.user.name,
+        email: user?.email || session.user.email,
+        username: user?.email?.split('@')[0] || 'user',
+        phone: user?.profile?.phone || null,
+        institution: user?.profile?.institution || null,
+        faculty: user?.profile?.faculty || null,
+        major: user?.profile?.major || null,
+        studentId: user?.profile?.studentId || null,
         subscription: subscription ? {
-          id: subscription.id,
-          status: subscription.status,
           package: {
             code: subscription.package.code,
             name: subscription.package.name,
           },
-          endDate: subscription.endDate,
+          expiresAt: subscription.endDate,
           isActive: subscription.isActive,
         } : null,
       },

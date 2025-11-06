@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -13,12 +13,21 @@ import { Eye, EyeOff } from 'lucide-react'
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: session, status } = useSession()
   const [identifier, setIdentifier] = useState('') // username or email
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+
+  // Redirect jika sudah login
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      console.log('[Login] 🔐 User sudah login, redirect ke dashboard')
+      router.push('/dashboard')
+    }
+  }, [status, session, router])
 
   // Auto-fill identifier from registration redirect
   useEffect(() => {
@@ -77,6 +86,21 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-brand-blue-light/30">
+        <div className="text-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-300 opacity-20 mx-auto"></div>
+          </div>
+          <p className="text-gray-700 font-medium mt-4">Memeriksa sesi...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

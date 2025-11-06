@@ -64,7 +64,55 @@ export default function DocumentDetailPage() {
     }
   }, [documentId])
 
-  // ❌ REMOVED: Auto-refresh - User will manually refresh using button
+  // ✅ Auto-refresh for PROCESSING/ANALYZING status
+  useEffect(() => {
+    if (!documentData) return
+
+    const isProcessing = documentData.status === 'PROCESSING' || documentData.status === 'ANALYZING'
+
+    if (isProcessing && jobId) {
+      console.log('[AutoRefresh] Starting polling for jobId:', jobId)
+
+      // Poll every 1 minute (60 seconds)
+      const pollInterval = setInterval(() => {
+        console.log('[AutoRefresh] Polling status...')
+        checkJobStatus()
+      }, 60000)
+
+      return () => {
+        console.log('[AutoRefresh] Stopping polling')
+        clearInterval(pollInterval)
+      }
+    }
+  }, [documentData?.status, jobId])
+
+  const checkJobStatus = async () => {
+    if (!jobId || !documentId) return
+
+    try {
+      const response = await fetch(`/api/documents/${documentId}/process-status?jobId=${jobId}`)
+      const data = await response.json()
+
+      if (data.success) {
+        console.log('[AutoRefresh] Status:', data.data.state)
+
+        // If completed or failed, refresh document
+        if (data.data.state === 'SUCCESS' || data.data.state === 'COMPLETED' || data.data.state === 'FAILED' || data.data.state === 'FAILURE') {
+          console.log('[AutoRefresh] Job finished, refreshing document...')
+          await fetchDocument()
+
+          // Fetch result if completed
+          if (data.data.state === 'SUCCESS' || data.data.state === 'COMPLETED') {
+            setTimeout(() => {
+              fetchJobResultSilent(jobId)
+            }, 500)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[AutoRefresh] Error checking status:', error)
+    }
+  }
 
   const fetchDocument = async () => {
     try {
@@ -531,9 +579,15 @@ export default function DocumentDetailPage() {
                   <p className="text-xl font-bold text-gray-900 mb-2">
                     🔄 Sedang Memproses Dokumen
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 mb-1">
                     Dokumen Anda sedang dianalisis dan diproses
                   </p>
+                  {jobId && (
+                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      Auto-refresh setiap 1 menit
+                    </div>
+                  )}
                 </div>
                 <Button
                   onClick={handleRefresh}
@@ -550,7 +604,7 @@ export default function DocumentDetailPage() {
                       <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
-                      Refresh Status
+                      Refresh Manual
                     </>
                   )}
                 </Button>
