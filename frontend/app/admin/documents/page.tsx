@@ -5,6 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { FileText, Download, Eye, Filter, Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useToast } from '@/hooks/use-toast'
 
 interface Document {
   id: string
@@ -36,10 +47,14 @@ interface Document {
 }
 
 export default function AdminDocumentsPage() {
+  const { toast } = useToast()
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchDocuments()
@@ -82,6 +97,47 @@ export default function AdminDocumentsPage() {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const handleDeleteClick = (doc: Document) => {
+    setDocumentToDelete(doc)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!documentToDelete) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/admin/documents/${documentToDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Remove document from list
+        setDocuments(documents.filter(d => d.id !== documentToDelete.id))
+
+        toast({
+          title: 'Berhasil',
+          description: 'Dokumen berhasil dihapus',
+        })
+      } else {
+        throw new Error(data.error || 'Gagal menghapus dokumen')
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Gagal',
+        description: error instanceof Error ? error.message : 'Gagal menghapus dokumen',
+      })
+    } finally {
+      setDeleting(false)
+      setShowDeleteDialog(false)
+      setDocumentToDelete(null)
+    }
   }
 
   const filteredDocuments = documents.filter(doc => {
@@ -292,11 +348,20 @@ export default function AdminDocumentsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center space-x-2 ml-4">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" title="Lihat Detail">
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" title="Download">
                       <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteClick(doc)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      title="Hapus Dokumen"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -305,6 +370,38 @@ export default function AdminDocumentsPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Dokumen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus dokumen ini?
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                <p className="font-medium text-gray-900">{documentToDelete?.title}</p>
+                <p className="text-sm text-gray-600 mt-1">{documentToDelete?.originalFilename}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  User: {documentToDelete?.user.name} ({documentToDelete?.user.email})
+                </p>
+              </div>
+              <p className="mt-3 text-red-600 font-medium">
+                Tindakan ini tidak dapat dibatalkan. Semua data terkait dokumen akan dihapus permanen.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? 'Menghapus...' : 'Hapus'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

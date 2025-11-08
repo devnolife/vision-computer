@@ -40,21 +40,32 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         """
         Validate API key untuk setiap request
         """
+        print(f"🔐 [API-KEY] Request to: {request.method} {request.url.path}")
+        
+        # Skip validation untuk OPTIONS request (CORS preflight)
+        if request.method == "OPTIONS":
+            print(f"   ✓ OPTIONS request (CORS preflight) - skipping validation")
+            return await call_next(request)
+        
         # Skip validation untuk excluded paths
         if request.url.path in self.exclude_paths:
+            print(f"   ✓ Public endpoint - skipping validation")
             return await call_next(request)
         
         # Skip validation jika API_KEY tidak di-set (development mode)
         if not self.api_key:
+            print(f"   ⚠️  API_KEY not set - allowing request")
             response = await call_next(request)
             response.headers["X-API-Auth"] = "disabled"
             return response
         
         # Get API key dari header
         api_key_header = request.headers.get("X-API-Key")
+        print(f"   🔑 API Key from header: {api_key_header[:20]}..." if api_key_header else "   ❌ No API Key in header")
         
         # Validate API key
         if not api_key_header:
+            print(f"   ❌ Missing API Key - returning 401")
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
@@ -67,6 +78,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             )
         
         if api_key_header != self.api_key:
+            print(f"   ❌ Invalid API Key - returning 403")
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
@@ -78,6 +90,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             )
         
         # API key valid, lanjutkan request
+        print(f"   ✅ API Key valid - processing request")
         response = await call_next(request)
         response.headers["X-API-Auth"] = "success"
         return response

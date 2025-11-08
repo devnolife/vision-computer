@@ -3,7 +3,8 @@
 # One script to rule them all!
 # Created by devnolife
 
-set -e
+# Don't exit on error in main menu, but exit on error in functions
+# set -e
 
 # Colors
 RED='\033[0;31m'
@@ -1491,29 +1492,62 @@ option_restart_celery() {
 # ═══════════════════════════════════════════════════════════════════
 
 main() {
+    # Disable errexit for menu loop
+    set +e
+    
     while true; do
         show_banner
         show_menu
 
-        echo -ne "${BOLD}${WHITE}Select option [0-13]: ${NC}"
+        echo -ne "${BOLD}${WHITE}Select option [0-15]: ${NC}"
         read -r choice
 
         case $choice in
-            1) option_init ;;
-            2) option_start_backend ;;
-            3) option_start_frontend ;;
-            4) option_start_all ;;
-            5) option_stop_backend ;;
-            6) option_restart_backend ;;
-            7) option_status ;;
-            8) option_logs ;;
-            9) option_monitor ;;
-            10) option_generate_key ;;
-            11) option_database ;;
-            12) option_docs ;;
-            13) option_sysinfo ;;
-            14) option_restart_redis ;;
-            15) option_restart_celery ;;
+            1) 
+                option_init || true
+                ;;
+            2) 
+                option_start_backend || true
+                ;;
+            3) 
+                option_start_frontend || true
+                ;;
+            4) 
+                option_start_all || true
+                ;;
+            5) 
+                option_stop_backend || true
+                ;;
+            6) 
+                option_restart_backend || true
+                ;;
+            7) 
+                option_status || true
+                ;;
+            8) 
+                option_logs || true
+                ;;
+            9) 
+                option_monitor || true
+                ;;
+            10) 
+                option_generate_key || true
+                ;;
+            11) 
+                option_database || true
+                ;;
+            12) 
+                option_docs || true
+                ;;
+            13) 
+                option_sysinfo || true
+                ;;
+            14) 
+                option_restart_redis || true
+                ;;
+            15) 
+                option_restart_celery || true
+                ;;
             0)
                 show_banner
                 echo -e "${GREEN}${BOLD}👋 Thank you for using Anti-Plagiasi System!${NC}"

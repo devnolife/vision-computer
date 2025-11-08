@@ -12,11 +12,44 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const requestStartTime = Date.now()
   try {
+    console.log('\n' + '='.repeat(70))
+    console.log('🚀 [NEXT.JS API] /api/documents/[id]/process - REQUEST RECEIVED')
+    console.log('   Timestamp:', new Date().toISOString())
+    console.log('   Document ID:', params.id)
+    console.log('   Backend URL:', BACKEND_URL)
+    console.log('   Python API Key:', process.env.PYTHON_API_KEY ? `${process.env.PYTHON_API_KEY.substring(0, 20)}...` : 'NOT SET')
+    console.log('   Request Method:', request.method)
+    console.log('   Request URL:', request.url)
+    console.log('='.repeat(70) + '\n')
+
+    // Test backend connectivity first
+    console.log('[PROCESS] 🔍 Testing backend connectivity...')
+    try {
+      const healthCheck = await fetch(`${BACKEND_URL}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      })
+      console.log(`[PROCESS] ✅ Backend is reachable - Status: ${healthCheck.status}`)
+    } catch (healthError: any) {
+      console.error('[PROCESS] ❌ Backend NOT reachable!')
+      console.error('   Error:', healthError.message)
+      console.error('   URL:', `${BACKEND_URL}/health`)
+      return NextResponse.json(
+        {
+          error: 'Backend Python tidak dapat dijangkau',
+          details: `Cannot connect to ${BACKEND_URL}. Error: ${healthError.message}`,
+          suggestion: 'Pastikan backend Python running dengan: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload'
+        },
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
 
     if (!session || !session.user) {
-      if (isDev) console.log('[PROCESS] ❌ Unauthorized - No session')
+      console.log('[PROCESS] ❌ Unauthorized - No session')
       return NextResponse.json(
         { error: 'Tidak diizinkan' },
         { status: 401 }
@@ -24,7 +57,8 @@ export async function POST(
     }
 
     const documentId = params.id
-    if (isDev) console.log(`[PROCESS] 🚀 Starting process for document: ${documentId}`)
+    console.log(`[PROCESS] 🚀 Starting process for document: ${documentId}`)
+    console.log(`[PROCESS] 👤 User: ${session.user.name} (${session.user.email})`)
 
     // Get document
     const document = await prisma.document.findUnique({
@@ -75,8 +109,23 @@ export async function POST(
     // ===== END CHECK APPROVAL STATUS =====
 
     // Check if document has both DOCX and PDF
-    if (!document.uploadPath || (!document.pdfPath && !document.uploadPath)) {
-      if (isDev) console.log('[PROCESS] ❌ Missing files - DOCX or PDF not found')
+    console.log('[PROCESS] 📄 Checking files:')
+    console.log(`   - DOCX uploadPath: ${document.uploadPath}`)
+    console.log(`   - PDF pdfPath: ${document.pdfPath}`)
+
+    if (!document.uploadPath || !document.pdfPath) {
+      console.log('[PROCESS] ❌ Missing files - DOCX or PDF not found')
+
+      if (!document.pdfPath) {
+        return NextResponse.json(
+          {
+            error: 'PDF Turnitin tidak ditemukan',
+            message: 'Dokumen harus memiliki PDF Turnitin untuk dapat diproses. Silakan upload ulang dengan menyertakan PDF Turnitin.'
+          },
+          { status: 400 }
+        )
+      }
+
       return NextResponse.json(
         { error: 'Dokumen harus memiliki file DOCX dan PDF Turnitin untuk diproses' },
         { status: 400 }
@@ -132,7 +181,7 @@ export async function POST(
     // Create FormData for backend
     const formData = new FormData()
 
-    // Add files
+    // Add files with correct parameter names matching Python backend
     const docxBlob = new Blob([docxBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     })
@@ -140,28 +189,72 @@ export async function POST(
       ? new Blob([pdfBuffer], { type: 'application/pdf' })
       : null
 
+    // Python backend expects: original_doc, turnitin_pdf, homoglyph_density, invisible_density
     formData.append('original_doc', docxBlob, docxFileName)
     if (pdfBlob) {
       formData.append('turnitin_pdf', pdfBlob, pdfFileName!)
     }
 
-    formData.append('original_filename', docxFileName)
-    if (pdfFileName) {
-      formData.append('turnitin_filename', pdfFileName)
-    }
+    // Add density parameters (Python backend requires these as Form data)
+    formData.append('homoglyph_density', '0.95')
+    formData.append('invisible_density', '0.40')
+
+    console.log('[PROCESS] FormData prepared with:')
+    console.log('   - original_doc:', docxFileName)
+    console.log('   - turnitin_pdf:', pdfFileName)
+    console.log('   - homoglyph_density: 0.95')
+    console.log('   - invisible_density: 0.40')
 
     // Call backend API
-    if (isDev) console.log(`[PROCESS] 📡 Calling backend: ${BACKEND_URL}/jobs/process-document`)
+    console.log(`\n${'='.repeat(70)}`)
+    console.log('[PROCESS] STEP 8: Preparing to call Python backend')
+    console.log(`[PROCESS] 📡 Target URL: ${BACKEND_URL}/jobs/process-document`)
+    console.log(`[PROCESS] 📦 FormData contents:`)
+    console.log(`   - original_doc: ${docxFileName} (${docxBuffer.length} bytes)`)
+    console.log(`   - turnitin_pdf: ${pdfFileName || 'NOT PROVIDED'} ${pdfBuffer ? `(${pdfBuffer.length} bytes)` : ''}`)
+    console.log(`   - API Key: ${process.env.PYTHON_API_KEY ? process.env.PYTHON_API_KEY.substring(0, 30) + '...' : 'NOT SET'}`)
+    console.log(`[PROCESS] 🚀 Initiating fetch request...`)
+    console.log('='.repeat(70))
 
-    const backendResponse = await fetch(`${BACKEND_URL}/jobs/process-document`, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-API-Key': process.env.PYTHON_API_KEY || '',
-      },
-    })
+    let backendResponse
+    try {
+      console.log('[PROCESS] >>> fetch() called - waiting for response...')
+      const fetchStartTime = Date.now()
 
-    if (isDev) console.log(`[PROCESS] 📡 Backend response status: ${backendResponse.status}`)
+      backendResponse = await fetch(`${BACKEND_URL}/jobs/process-document`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-API-Key': process.env.PYTHON_API_KEY || '',
+        },
+      })
+
+      const fetchDuration = Date.now() - fetchStartTime
+      console.log(`[PROCESS] <<< fetch() completed in ${fetchDuration}ms`)
+      console.log(`[PROCESS] ✅ Backend response received!`)
+      console.log(`[PROCESS] 📡 Status: ${backendResponse.status} ${backendResponse.statusText}`)
+      console.log(`[PROCESS] 📡 Headers:`, Object.fromEntries(backendResponse.headers.entries()))
+      console.log(`[PROCESS] 📡 Response OK: ${backendResponse.ok}`)
+    } catch (fetchError: any) {
+      console.error('[PROCESS] ❌ FETCH ERROR - Cannot connect to Python backend:')
+      console.error('   Error:', fetchError.message)
+      console.error('   Backend URL:', BACKEND_URL)
+      console.error('   Cause:', fetchError.cause)
+
+      await prisma.document.update({
+        where: { id: documentId },
+        data: { status: 'FAILED' },
+      })
+
+      return NextResponse.json(
+        {
+          error: 'Tidak dapat terhubung ke backend Python',
+          details: `${fetchError.message}. Pastikan backend Python running di ${BACKEND_URL}`,
+          backendUrl: BACKEND_URL
+        },
+        { status: 503 }
+      )
+    }
 
     if (!backendResponse.ok) {
       const error = await backendResponse.text()

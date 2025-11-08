@@ -284,15 +284,24 @@ async def submit_unified_job(
     3. When state=SUCCESS, get results from /jobs/{job_id}/result
     4. Download modified file from /bypass/download/{filename}
     """
+    print(f"\n{'='*60}")
+    print(f"🚀 [PROCESS-DOCUMENT] Request received!")
+    print(f"   Turnitin PDF: {turnitin_pdf.filename}")
+    print(f"   Original DOC: {original_doc.filename}")
+    print(f"   Homoglyph density: {homoglyph_density}")
+    print(f"   Invisible density: {invisible_density}")
+    print(f"{'='*60}\n")
+    
     # Validate file types
     if not turnitin_pdf.filename.endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Turnitin file must be PDF")
+        error_msg = f"Turnitin file must be PDF (received: {turnitin_pdf.filename})"
+        print(f"❌ [VALIDATION ERROR] {error_msg}")
+        raise HTTPException(status_code=400, detail=error_msg)
 
     if not original_doc.filename.lower().endswith('.docx'):
-        raise HTTPException(
-            status_code=400,
-            detail="Original document must be DOCX (bypass only supports DOCX format)"
-        )
+        error_msg = f"Original document must be DOCX (received: {original_doc.filename})"
+        print(f"❌ [VALIDATION ERROR] {error_msg}")
+        raise HTTPException(status_code=400, detail=error_msg)
 
     try:
         from datetime import datetime

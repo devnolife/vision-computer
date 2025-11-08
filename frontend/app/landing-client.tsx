@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -28,9 +28,17 @@ interface LandingClientProps {
 }
 
 export default function LandingClient({ packages }: LandingClientProps) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Redirect jika sudah login
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      console.log('[Landing] 🏠 User sudah login, redirect ke dashboard')
+      router.push('/dashboard')
+    }
+  }, [status, session, router])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -46,6 +54,21 @@ export default function LandingClient({ packages }: LandingClientProps) {
     } else {
       router.push('/auth/register')
     }
+  }
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-300 opacity-20 mx-auto"></div>
+          </div>
+          <p className="text-gray-700 font-medium mt-4">Memuat...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

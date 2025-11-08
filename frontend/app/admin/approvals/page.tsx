@@ -91,9 +91,8 @@ export default function ApprovalsPage() {
       const response = await fetch('/api/admin/settings')
       const data = await response.json()
 
-      if (data.success) {
-        setAutoApprovalEnabled(data.autoApprovalEnabled)
-      }
+      // Data now returns settings directly without success wrapper
+      setAutoApprovalEnabled(data.autoApproveDocuments || false)
     } catch (error) {
       console.error('Error loading settings:', error)
     }
@@ -109,23 +108,29 @@ export default function ApprovalsPage() {
   const handleToggleAutoApproval = async () => {
     setTogglingAutoApproval(true)
     try {
-      const response = await fetch('/api/admin/settings/auto-approval', {
+      // Get current settings first
+      const getResponse = await fetch('/api/admin/settings')
+      const currentSettings = await getResponse.json()
+
+      // Toggle the autoApproveDocuments setting
+      const response = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          enabled: !autoApprovalEnabled,
+          ...currentSettings,
+          autoApproveDocuments: !autoApprovalEnabled,
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setAutoApprovalEnabled(data.enabled)
+        setAutoApprovalEnabled(!autoApprovalEnabled)
         toast({
           title: 'Berhasil',
-          description: data.message,
+          description: `Auto-approve ${!autoApprovalEnabled ? 'diaktifkan' : 'dinonaktifkan'}`,
         })
       } else {
         throw new Error(data.error)
@@ -631,8 +636,8 @@ export default function ApprovalsPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Status Approval:</span>
                         <span className={`font-semibold ${previewDoc.approvalStatus === 'PENDING' ? 'text-amber-600' :
-                            previewDoc.approvalStatus === 'APPROVED' ? 'text-green-600' :
-                              'text-red-600'
+                          previewDoc.approvalStatus === 'APPROVED' ? 'text-green-600' :
+                            'text-red-600'
                           }`}>
                           {previewDoc.approvalStatus}
                         </span>

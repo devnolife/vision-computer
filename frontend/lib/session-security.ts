@@ -64,9 +64,16 @@ export async function validateSession(userId: string, sessionToken: string) {
     return { valid: false, reason: 'Session not found or expired' }
   }
 
-  // Check if fingerprint matches
-  if (session.deviceId !== currentDevice.fingerprint) {
-    // Device mismatch - possible session theft
+  // Check if fingerprint matches (with some tolerance for IP changes)
+  // Only invalidate if both UA and IP changed significantly
+  const storedUA = session.userAgent
+  const currentUA = currentDevice.userAgent
+
+  // Compare user agents (more reliable than IP)
+  const isSameDevice = storedUA === currentUA
+
+  if (!isSameDevice) {
+    // User Agent changed completely - likely different device
     await prisma.userSession.update({
       where: { id: session.id },
       data: {
@@ -78,10 +85,22 @@ export async function validateSession(userId: string, sessionToken: string) {
     return { valid: false, reason: 'Device mismatch detected' }
   }
 
-  // Check session expiry (24 hours)
+  // If User Agent matches but IP changed, it's OK (user might be on different network)
+  // Update the IP address and device fingerprint
+  if (session.deviceId !== currentDevice.fingerprint) {
+    await prisma.userSession.update({
+      where: { id: session.id },
+      data: {
+        deviceId: currentDevice.fingerprint,
+        ipAddress: currentDevice.ip,
+      },
+    })
+  }
+
+  // Check session expiry (30 days - consistent with NextAuth config)
   const now = new Date()
   const sessionAge = now.getTime() - new Date(session.lastActivity).getTime()
-  const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+  const maxAge = 30 * 24 * 60 * 60 * 1000 // 30 days
 
   if (sessionAge > maxAge) {
     await prisma.userSession.update({
@@ -129,7 +148,7 @@ export async function createSession(userId: string, sessionToken: string) {
       os,
       isActive: true,
       lastActivity: new Date(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days - consistent with NextAuth
     },
   })
 
