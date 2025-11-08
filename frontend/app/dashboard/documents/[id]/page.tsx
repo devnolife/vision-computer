@@ -153,7 +153,7 @@ export default function DocumentDetailPage() {
         title: 'Gagal',
         description: 'Gagal mengambil detail dokumen',
       })
-      router.push('/dashboard/documents')
+      router.push('/dashboard')
     } finally {
       setLoading(false)
     }
@@ -391,13 +391,20 @@ export default function DocumentDetailPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    if (!dateString) return '-'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '-'
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch (error) {
+      return '-'
+    }
   }
 
   const formatFileSize = (bytes: number) => {
@@ -428,7 +435,7 @@ export default function DocumentDetailPage() {
         <div className="max-w-5xl mx-auto">
           <Button
             variant="outline"
-            onClick={() => router.push('/dashboard/documents')}
+            onClick={() => router.push('/dashboard')}
             className="mb-6 rounded-xl border-2 hover:border-blue-400 hover:bg-blue-50 transition-all"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -454,11 +461,11 @@ export default function DocumentDetailPage() {
         {/* Back Button */}
         <Button
           variant="outline"
-          onClick={() => router.push('/dashboard/documents')}
+          onClick={() => router.push('/dashboard')}
           className="mb-6 rounded-xl border-2 hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm hover:shadow-md"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Kembali ke Dokumen
+          Kembali ke Dashboard
         </Button>
 
         {/* Header - Modern Design */}
@@ -517,11 +524,12 @@ export default function DocumentDetailPage() {
           <Card className="mb-6 shadow-lg border-0 rounded-2xl overflow-hidden bg-gradient-to-r from-red-50 to-pink-50">
             <CardContent className="pt-5 pb-5">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                {/* Ilustrasi Broken Document */}
+                <img
+                  src="/assets/Broken_Document.png"
+                  alt="Rejected document"
+                  className="w-24 h-24 object-contain flex-shrink-0"
+                />
                 <div className="flex-1">
                   <h3 className="text-base font-bold text-red-900 mb-1.5">
                     ❌ Dokumen Ditolak
@@ -546,11 +554,12 @@ export default function DocumentDetailPage() {
           <Card className="mb-6 shadow-lg border-0 rounded-2xl overflow-hidden bg-gradient-to-r from-green-50 to-emerald-50">
             <CardContent className="pt-5 pb-5">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                {/* Ilustrasi Certificate */}
+                <img
+                  src="/assets/Certificate.png"
+                  alt="Approved document"
+                  className="w-24 h-24 object-contain flex-shrink-0"
+                />
                 <div className="flex-1">
                   <h3 className="text-base font-bold text-green-900 mb-1.5">
                     ✅ Dokumen Disetujui
@@ -569,12 +578,12 @@ export default function DocumentDetailPage() {
           <Card className="mb-6 shadow-xl border-0 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
             <CardContent className="pt-8 pb-8">
               <div className="flex flex-col items-center justify-center space-y-5">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full animate-pulse opacity-20 blur-xl"></div>
-                  <div className="relative w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                    <Clock className="h-10 w-10 text-white animate-spin" style={{ animationDuration: '2s' }} />
-                  </div>
-                </div>
+                {/* Ilustrasi Processing */}
+                <img
+                  src="/assets/Document_Overload.png"
+                  alt="Processing document"
+                  className="w-48 h-48 object-contain"
+                />
                 <div className="text-center">
                   <p className="text-xl font-bold text-gray-900 mb-2">
                     🔄 Sedang Memproses Dokumen
@@ -640,11 +649,14 @@ export default function DocumentDetailPage() {
                   <p className="text-xs font-medium text-purple-700">Tanggal Upload</p>
                 </div>
                 <p className="text-lg font-bold text-purple-900">
-                  {new Date(documentData.createdAt).toLocaleDateString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
+                  {documentData.createdAt
+                    ? new Date(documentData.createdAt).toLocaleDateString('id-ID', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })
+                    : '-'
+                  }
                 </p>
               </div>
               {documentData.analysis && (
@@ -757,12 +769,12 @@ export default function DocumentDetailPage() {
           <Card className="mb-6 shadow-2xl border-0 rounded-3xl overflow-hidden bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600">
             <CardContent className="pt-8 pb-8">
               <div className="flex flex-col items-center justify-center space-y-5">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
-                  <div className="relative w-24 h-24 bg-white/20 backdrop-blur rounded-full flex items-center justify-center shadow-2xl">
-                    <CheckCircle className="h-12 w-12 text-white" />
-                  </div>
-                </div>
+                {/* Ilustrasi Certificate */}
+                <img
+                  src="/assets/Certificate.png"
+                  alt="Completed document"
+                  className="w-40 h-40 object-contain drop-shadow-2xl"
+                />
                 <div className="text-center">
                   <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-md">
                     🎉 Proses Selesai!
@@ -833,12 +845,15 @@ export default function DocumentDetailPage() {
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          {new Date(bypass.createdAt).toLocaleDateString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {bypass.createdAt
+                            ? new Date(bypass.createdAt).toLocaleDateString('id-ID', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                            : '-'
+                          }
                         </p>
                         <p className="text-xs text-gray-500 truncate mb-2">
                           📄 {bypass.outputFilename}

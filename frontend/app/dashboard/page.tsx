@@ -640,7 +640,7 @@ export default function DashboardPage() {
     switch (status) {
       case 'COMPLETED':
         return (
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-xs font-bold shadow-md">
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-brand-primary text-white rounded-xl text-xs font-bold shadow-md">
             <CheckCircle className="h-3.5 w-3.5" />
             <span>Selesai</span>
           </div>
@@ -648,21 +648,21 @@ export default function DashboardPage() {
       case 'PROCESSING':
       case 'ANALYZING':
         return (
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-md animate-pulse">
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-brand-blue text-white rounded-xl text-xs font-bold shadow-md animate-pulse">
             <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: '2s' }} />
             <span>Proses</span>
           </div>
         )
       case 'FAILED':
         return (
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl text-xs font-bold shadow-md">
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-brand-coral text-white rounded-xl text-xs font-bold shadow-md">
             <AlertCircle className="h-3.5 w-3.5" />
             <span>Gagal</span>
           </div>
         )
       default:
         return (
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-gray-400 to-gray-600 text-white rounded-xl text-xs font-bold shadow-md">
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-brand-teal text-white rounded-xl text-xs font-bold shadow-md">
             <Clock className="h-3.5 w-3.5" />
             <span>Pending</span>
           </div>
@@ -677,122 +677,153 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
-            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-300 opacity-20 mx-auto"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-brand-purple mx-auto mb-4"></div>
+            <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-brand-purple/30 opacity-20 mx-auto"></div>
           </div>
-          <p className="text-gray-700 font-medium mt-4">Memuat dashboard...</p>
+          <p className="text-brand-navy-dark font-medium mt-4">Memuat dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Main Container - Full Page Layout */}
       <div className="flex h-screen">
 
         {/* LEFT SIDE - Document List (70%) */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex-1 flex flex-col overflow-hidden bg-white/40 backdrop-blur-sm">
 
           {/* Document List */}
-          <div className="flex-1 overflow-y-auto px-8 py-6">
-            {/* Search and Upload */}
-            <div className="mb-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Dokumen Saya</h2>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {/* Search and Upload - Modern Header */}
+            <div className="mb-6">
+              {/* Title with Gradient */}
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold text-brand-blue mb-1">
+                  Dokumen Saya
+                </h2>
+                <p className="text-brand-navy text-xs">Kelola dan proses dokumen Anda dengan mudah</p>
+              </div>
+
+              {/* Search and Upload Row */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-brand-blue" />
+                  <Input
+                    type="text"
+                    placeholder="Cari berdasarkan judul atau nama file..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-9 text-sm bg-white/80 backdrop-blur border-brand-blue-light/50 rounded-xl focus:ring-2 focus:ring-brand-aqua focus:border-transparent shadow-sm hover:shadow-md transition-all"
+                  />
+                </div>
                 <Button
                   onClick={() => setUploadDialogOpen(true)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  className="bg-brand-purple hover:bg-brand-lavender text-white font-semibold px-4 h-9 text-sm rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-4 w-4 mr-1.5" />
                   Upload
                 </Button>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Cari dokumen..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-11 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-sm"
-                />
               </div>
             </div>
 
             {filteredDocuments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <FileText className="h-12 w-12 text-gray-400" />
+              <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                {/* Ilustrasi */}
+                <div className="mb-4">
+                  {searchQuery ? (
+                    <img
+                      src="/assets/Document Searching.png"
+                      alt="Searching documents"
+                      className="w-48 h-48 object-contain mx-auto"
+                    />
+                  ) : (
+                    <img
+                      src="/assets/Document_Overload.png"
+                      alt="No documents"
+                      className="w-48 h-48 object-contain mx-auto"
+                    />
+                  )}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-bold text-brand-navy-dark mb-1.5">
                   {searchQuery ? 'Tidak ada dokumen ditemukan' : 'Belum ada dokumen'}
                 </h3>
-                <p className="text-gray-600 mb-6">
-                  {searchQuery ? 'Coba kata kunci lain' : 'Mulai upload dokumen pertama Anda'}
+                <p className="text-brand-navy text-sm mb-4 max-w-md">
+                  {searchQuery ? 'Coba kata kunci lain atau hapus filter pencarian' : 'Mulai upload dokumen pertama Anda dan kelola plagiarisme dengan mudah'}
                 </p>
                 {!searchQuery && (
                   <Button
                     onClick={() => setUploadDialogOpen(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg"
+                    className="bg-brand-purple hover:bg-brand-aqua text-white font-semibold px-5 py-2 text-sm rounded-xl shadow-lg"
                   >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Upload Dokumen Pertama
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Upload Dokumen
                   </Button>
                 )}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 {filteredDocuments.map((doc) => (
                   <Card
                     key={doc.id}
-                    className="hover:shadow-lg transition-all cursor-pointer border-0 bg-white/80 backdrop-blur"
+                    className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-white/90 backdrop-blur-xl rounded-2xl overflow-hidden transform hover:scale-[1.01]"
                     onClick={() => router.push(`/dashboard/documents/${doc.id}`)}
                   >
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-4">
-                        {/* Icon */}
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                          <FileText className="h-6 w-6 text-white" />
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        {/* Icon with Animation */}
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-brand-blue rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity"></div>
+                          <div className="relative w-12 h-12 bg-brand-blue rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg transform group-hover:rotate-3 transition-transform">
+                            <FileText className="h-6 w-6 text-white" />
+                          </div>
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <h3 className="text-base font-semibold text-gray-900 truncate">
-                              {doc.title}
-                            </h3>
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 min-w-0 pr-3">
+                              <h3 className="text-base font-bold text-brand-navy-dark truncate mb-0.5 group-hover:text-brand-blue transition-colors">
+                                {doc.title}
+                              </h3>
+                              <p className="text-xs text-brand-navy truncate flex items-center gap-1.5">
+                                <File className="h-3 w-3 text-brand-aqua" />
+                                {doc.originalFilename}
+                              </p>
+                            </div>
                             {getStatusBadge(doc.status)}
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <File className="h-3 w-3" />
-                              {doc.originalFilename}
-                            </span>
-                            <span className="flex items-center gap-1">
+
+                          {/* Meta Info */}
+                          <div className="flex items-center gap-2 text-xs text-brand-navy mb-2">
+                            <span className="flex items-center gap-1 bg-brand-secondary px-2 py-1 rounded-lg">
                               <Calendar className="h-3 w-3" />
                               {formatDate(doc.uploadedAt || doc.createdAt)}
                             </span>
-                            <span>{formatFileSize(doc.fileSize)}</span>
+                            <span className="flex items-center gap-1 bg-brand-secondary px-2 py-1 rounded-lg">
+                              <File className="h-3 w-3" />
+                              {formatFileSize(doc.fileSize)}
+                            </span>
                           </div>
-                        </div>
 
-                        {/* Action */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-blue-600 hover:bg-blue-50"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/dashboard/documents/${doc.id}`)
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Lihat
-                        </Button>
+                          {/* Action Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-brand-purple hover:bg-brand-lavender-light rounded-lg px-3 h-7 text-xs group-hover:bg-brand-blue-light transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/dashboard/documents/${doc.id}`)
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Lihat Detail
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -803,80 +834,109 @@ export default function DashboardPage() {
         </div>
 
         {/* RIGHT SIDE - Profile Section (30%) */}
-        <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+        <div className="w-80 bg-white backdrop-blur-xl border-l border-gray-200 flex flex-col">
 
-          {/* Profile Header */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                <User className="h-8 w-8 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-gray-900 truncate">
-                  {userProfile?.name || session?.user?.name || 'User'}
-                </h2>
-                <p className="text-sm text-gray-600 truncate">
-                  {userProfile?.email || session?.user?.email || '-'}
-                </p>
-              </div>
-            </div>
+          {/* Profile Header - Modern */}
+          <div className="p-4 border-b border-gray-200/50">
+            <div className="relative mb-4">
+              {/* Gradient Background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl opacity-10 blur-lg"></div>
 
-            {/* Package Badge */}
-            {userProfile?.subscription?.package && (
-              <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <PackageIcon className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs font-semibold text-amber-900">Paket Aktif</span>
+              {/* Profile Card */}
+              <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-brand-sage-light">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-brand-purple rounded-full blur opacity-40"></div>
+                    <div className="relative w-12 h-12 bg-brand-purple rounded-full flex items-center justify-center shadow-lg">
+                      <User className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-sm font-bold text-brand-navy-dark truncate">
+                      {userProfile?.name || session?.user?.name || 'User'}
+                    </h2>
+                    <p className="text-xs text-brand-navy truncate">
+                      {userProfile?.email || session?.user?.email || '-'}
+                    </p>
+                  </div>
+                  {/* Logout Button */}
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="sm"
+                    className="text-brand-coral hover:bg-brand-coral-light hover:text-brand-coral rounded-lg h-8 w-8 p-0"
+                    title="Keluar"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
                 </div>
-                <p className="text-sm font-bold text-amber-900">
-                  {userProfile.subscription.package.name}
-                </p>
-                {userProfile.subscription.expiresAt && (
-                  <p className="text-xs text-amber-700 mt-1">
-                    Berakhir: {formatDate(userProfile.subscription.expiresAt)}
-                  </p>
+
+                {/* Package Badge - Modern */}
+                {userProfile?.subscription?.package && (
+                  <div className="relative overflow-hidden p-3 bg-brand-peach rounded-xl shadow-md">
+                    <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+                    <div className="relative flex items-center gap-2">
+                      <div className="w-8 h-8 bg-white/30 backdrop-blur rounded-lg flex items-center justify-center">
+                        <PackageIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-white/80 mb-0.5">Paket Aktif</p>
+                        <p className="text-sm font-bold text-white">
+                          {userProfile.subscription.package.name}
+                        </p>
+                        {userProfile.subscription.expiresAt && (
+                          <p className="text-xs text-white/70 mt-0.5">
+                            Berakhir: {formatDate(userProfile.subscription.expiresAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Profile Details */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700">Data Diri</h3>
+          {/* Profile Details - Modern */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <div className="w-1 h-4 bg-gradient-to-b from-blue-600 to-purple-600 rounded-full"></div>
+                Data Diri
+              </h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleOpenEditProfile}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8"
+                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-7 text-xs rounded-lg"
               >
-                <Edit className="h-4 w-4 mr-1.5" />
+                <Edit className="h-3 w-3 mr-1" />
                 Edit
               </Button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* Nama Lengkap */}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <User className="h-4 w-4 text-blue-600" />
+              <div className="flex items-start gap-2 p-2.5 bg-white backdrop-blur rounded-xl border border-gray-200 hover:border-brand-purple hover:bg-gray-50 transition-all">
+                <div className="w-8 h-8 bg-brand-purple rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <User className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-600 mb-0.5">Nama Lengkap</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs font-medium text-brand-navy mb-0.5">Nama Lengkap</p>
+                  <p className="text-xs font-semibold text-brand-navy-dark">
                     {userProfile?.name || session?.user?.name || '-'}
                   </p>
                 </div>
               </div>
 
               {/* Email */}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Mail className="h-4 w-4 text-purple-600" />
+              <div className="flex items-start gap-2 p-2.5 bg-white backdrop-blur rounded-xl border border-gray-200 hover:border-brand-blue hover:bg-gray-50 transition-all">
+                <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Mail className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-600 mb-0.5">Email</p>
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-xs font-medium text-brand-navy mb-0.5">Email</p>
+                  <p className="text-xs font-semibold text-brand-navy-dark truncate">
                     {userProfile?.email || session?.user?.email || '-'}
                   </p>
                 </div>
@@ -884,13 +944,13 @@ export default function DashboardPage() {
 
               {/* Phone */}
               {userProfile?.phone && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="h-4 w-4 text-green-600" />
+                <div className="flex items-start gap-2 p-2.5 bg-white backdrop-blur rounded-xl border border-gray-200 hover:border-brand-coral hover:bg-gray-50 transition-all">
+                  <div className="w-8 h-8 bg-brand-coral rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <Phone className="h-4 w-4 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 mb-0.5">Telepon</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs font-medium text-brand-navy mb-0.5">Telepon</p>
+                    <p className="text-xs font-semibold text-brand-navy-dark">
                       {userProfile.phone}
                     </p>
                   </div>
@@ -900,21 +960,21 @@ export default function DashboardPage() {
               {/* Divider */}
               {(userProfile?.institution || userProfile?.faculty || userProfile?.major || userProfile?.studentId) && (
                 <div className="border-t border-gray-200 pt-4 mt-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Informasi Akademik</h3>
+                  <h3 className="text-sm font-semibold text-brand-navy-dark mb-4">Informasi Akademik</h3>
                 </div>
               )}
 
               {/* Institution */}
               {userProfile?.institution && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 mb-0.5">Institusi</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs text-brand-navy mb-0.5">Institusi</p>
+                    <p className="text-sm font-medium text-brand-navy-dark">
                       {userProfile.institution}
                     </p>
                   </div>
@@ -924,14 +984,14 @@ export default function DashboardPage() {
               {/* Faculty */}
               {userProfile?.faculty && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="h-4 w-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 mb-0.5">Fakultas</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs text-brand-navy mb-0.5">Fakultas</p>
+                    <p className="text-sm font-medium text-brand-navy-dark">
                       {userProfile.faculty}
                     </p>
                   </div>
@@ -941,14 +1001,14 @@ export default function DashboardPage() {
               {/* Major/Jurusan */}
               {userProfile?.major && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-brand-aqua" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 mb-0.5">Program Studi</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs text-brand-navy mb-0.5">Program Studi</p>
+                    <p className="text-sm font-medium text-brand-navy-dark">
                       {userProfile.major}
                     </p>
                   </div>
@@ -958,14 +1018,14 @@ export default function DashboardPage() {
               {/* Student ID */}
               {userProfile?.studentId && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="h-4 w-4 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 mb-0.5">NIM/NIS</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs text-brand-navy mb-0.5">NIM/NIS</p>
+                    <p className="text-sm font-medium text-brand-navy-dark">
                       {userProfile.studentId}
                     </p>
                   </div>
@@ -978,17 +1038,17 @@ export default function DashboardPage() {
 
       {/* Edit Profile Dialog */}
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
           <DialogHeader className="pb-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-brand-purple rounded-xl flex items-center justify-center shadow-lg">
                 <Edit className="h-6 w-6 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-gray-900">
+                <DialogTitle className="text-xl font-bold text-brand-navy-dark">
                   Edit Profile
                 </DialogTitle>
-                <p className="text-sm text-gray-600 mt-0.5">Update informasi pribadi dan akademik Anda</p>
+                <p className="text-sm text-brand-navy mt-0.5">Update informasi pribadi dan akademik Anda</p>
               </div>
             </div>
           </DialogHeader>
@@ -996,7 +1056,7 @@ export default function DashboardPage() {
           <div className="space-y-6 mt-6">
             {/* Data Pribadi */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Data Pribadi</h3>
+              <h3 className="text-sm font-semibold text-brand-navy-dark mb-3">Data Pribadi</h3>
               <div className="space-y-4">
                 {/* Nama Lengkap */}
                 <div>
@@ -1050,7 +1110,7 @@ export default function DashboardPage() {
 
             {/* Informasi Akademik */}
             <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Informasi Akademik</h3>
+              <h3 className="text-sm font-semibold text-brand-navy-dark mb-3">Informasi Akademik</h3>
               <div className="space-y-4">
                 {/* Institusi */}
                 <div>
@@ -1120,7 +1180,7 @@ export default function DashboardPage() {
 
             {/* Ubah Password */}
             <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-brand-navy-dark mb-3 flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 Ubah Password (Opsional)
               </h3>
@@ -1187,7 +1247,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={isSaving}
-                className="flex-1 h-11 text-base bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+                className="flex-1 h-11 text-base bg-brand-purple hover:bg-brand-blue text-white font-semibold shadow-lg"
               >
                 {isSaving ? (
                   <div className="flex items-center">
@@ -1220,35 +1280,35 @@ export default function DashboardPage() {
 
       {/* Upload Dialog - Modern Design (sama seperti sebelumnya) */}
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-blue-50/50 via-white to-purple-50/50">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
           <DialogHeader className="pb-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-brand-blue rounded-xl flex items-center justify-center shadow-lg">
                 <Upload className="h-6 w-6 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-gray-900">
+                <DialogTitle className="text-xl font-bold text-brand-navy-dark">
                   Upload Dokumen Baru
                 </DialogTitle>
-                <p className="text-sm text-gray-600 mt-0.5">Unggah dokumen DOCX dan PDF Turnitin</p>
+                <p className="text-sm text-brand-navy mt-0.5">Unggah dokumen DOCX dan PDF Turnitin</p>
               </div>
             </div>
           </DialogHeader>
 
           <div className="space-y-6 mt-6">
             {/* Info Banner */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-yellow-700" fill="currentColor" viewBox="0 0 20 20">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xs font-semibold text-yellow-900 mb-1">
+                  <h3 className="text-xs font-semibold text-blue-900 mb-1">
                     ℹ️ Informasi Penting
                   </h3>
-                  <ul className="text-xs text-yellow-800 space-y-0.5">
+                  <ul className="text-xs text-blue-800 space-y-0.5">
                     <li>• Dokumen akan menunggu persetujuan admin sebelum diproses</li>
                     <li>• Proses dimulai otomatis setelah disetujui</li>
                     <li>• Kedua file (DOCX + PDF) wajib diupload</li>
@@ -1258,11 +1318,11 @@ export default function DashboardPage() {
             </div>
 
             {/* DOCX Upload */}
-            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-xs">1</div>
-                <Label className="text-base font-semibold text-gray-900">
-                  File DOCX Original <span className="text-red-500">*</span>
+                <div className="w-7 h-7 bg-brand-blue rounded-full flex items-center justify-center text-white font-bold text-xs">1</div>
+                <Label className="text-base font-semibold text-brand-navy-dark">
+                  File DOCX Original <span className="text-brand-coral">*</span>
                 </Label>
               </div>
               {!selectedDocxFile ? (
@@ -1272,39 +1332,41 @@ export default function DashboardPage() {
                   onDragOver={handleDragDocx}
                   onDrop={handleDropDocx}
                   className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-300 ${dragActiveDocx
-                    ? 'border-blue-400 bg-blue-50 scale-105'
-                    : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                    ? 'border-brand-blue bg-blue-50 scale-105'
+                    : 'border-gray-300 hover:border-brand-blue hover:bg-gray-50'
                     }`}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg">
-                    <Upload className="h-8 w-8 text-white" />
-                  </div>
-                  <p className="text-base font-semibold text-gray-900 mb-1">
+                  <img
+                    src="/assets/Upload_File.png"
+                    alt="Upload file"
+                    className="w-32 h-32 object-contain mx-auto mb-4"
+                  />
+                  <p className="text-base font-semibold text-brand-navy-dark mb-1">
                     Drag & drop file DOCX
                   </p>
-                  <p className="text-sm text-gray-600 mb-4">Atau klik untuk memilih file</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm text-brand-navy mb-4">Atau klik untuk memilih file</p>
+                  <p className="text-xs text-brand-aqua">
                     Format: .docx | Maksimal: 10MB
                   </p>
                 </div>
               ) : (
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-xl p-4 shadow-sm">
+                <div className="bg-blue-50 border border-brand-blue rounded-xl p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <div className="w-12 h-12 bg-brand-blue rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
                         <File className="h-6 w-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
+                        <p className="text-sm font-semibold text-brand-navy-dark truncate">
                           {selectedDocxFile.name}
                         </p>
-                        <p className="text-xs text-gray-600 mt-0.5">
+                        <p className="text-xs text-brand-navy mt-0.5">
                           {formatFileSize(selectedDocxFile.size)}
                         </p>
                         <div className="flex items-center mt-2">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-1.5" />
-                          <span className="text-xs text-green-700 font-medium">
+                          <CheckCircle className="h-4 w-4 text-brand-primary mr-1.5" />
+                          <span className="text-xs text-brand-primary font-medium">
                             File siap diupload
                           </span>
                         </div>
@@ -1316,7 +1378,7 @@ export default function DashboardPage() {
                       size="sm"
                       onClick={handleRemoveDocxFile}
                       disabled={uploading}
-                      className="text-red-500 hover:bg-red-50 hover:text-red-600 h-9 w-9 p-0"
+                      className="text-brand-coral hover:bg-brand-coral-light hover:text-brand-coral h-9 w-9 p-0"
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -1326,11 +1388,11 @@ export default function DashboardPage() {
             </div>
 
             {/* PDF Upload */}
-            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center text-white font-bold text-xs">2</div>
-                <Label className="text-base font-semibold text-gray-900">
-                  File PDF Turnitin <span className="text-red-500">*</span>
+                <div className="w-7 h-7 bg-brand-purple rounded-full flex items-center justify-center text-white font-bold text-xs">2</div>
+                <Label className="text-base font-semibold text-brand-navy-dark">
+                  File PDF Turnitin <span className="text-brand-coral">*</span>
                 </Label>
               </div>
               {!selectedPdfFile ? (
@@ -1345,9 +1407,11 @@ export default function DashboardPage() {
                     }`}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg">
-                    <Upload className="h-8 w-8 text-white" />
-                  </div>
+                  <img
+                    src="/assets/Upload_File.png"
+                    alt="Upload PDF file"
+                    className="w-32 h-32 object-contain mx-auto mb-4"
+                  />
                   <p className="text-base font-semibold text-gray-900 mb-1">
                     Drag & drop file PDF
                   </p>

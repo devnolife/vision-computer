@@ -246,7 +246,7 @@ export default function UploadDocumentPage() {
         })
 
         // Redirect to document detail
-        router.push('/dashboard/documents')
+        router.push('/dashboard')
         return
       }
 
@@ -272,7 +272,7 @@ export default function UploadDocumentPage() {
           description: 'Dokumen DOCX berhasil diupload. Upload PDF Turnitin untuk memulai proses bypass.',
         })
 
-        router.push('/dashboard/documents')
+        router.push('/dashboard')
         return
       }
 
@@ -347,7 +347,7 @@ export default function UploadDocumentPage() {
 
             // Still redirect to documents list
             setTimeout(() => {
-              router.push('/dashboard/documents')
+              router.push('/dashboard')
             }, 1500)
           }
         } catch (processError) {
@@ -360,7 +360,7 @@ export default function UploadDocumentPage() {
 
           // Still redirect to document page
           setTimeout(() => {
-            router.push('/dashboard/documents')
+            router.push('/dashboard')
           }, 1500)
         }
       }
@@ -391,11 +391,11 @@ export default function UploadDocumentPage() {
         <div className="mb-8">
           <Button
             variant="outline"
-            onClick={() => router.push('/dashboard/documents')}
+            onClick={() => router.push('/dashboard')}
             className="mb-6 border-gray-200 text-gray-700 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali ke Dokumen
+            Kembali ke Dashboard
           </Button>
 
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-2xl p-8 mb-8 shadow-sm">
@@ -643,7 +643,7 @@ export default function UploadDocumentPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => router.push('/dashboard/documents')}
+              onClick={() => router.push('/dashboard')}
               disabled={uploading}
               className="px-8 h-14 border-gray-200 text-gray-700 hover:bg-gray-50"
             >
