@@ -90,6 +90,22 @@ show_menu() {
     echo -e "  ${MAGENTA}${BOLD}[12]${NC} 📚 ${WHITE}View Documentation${NC}          ${DIM}Open README${NC}"
     echo -e "  ${MAGENTA}${BOLD}[13]${NC} ℹ️  ${WHITE}System Information${NC}         ${DIM}Show system info${NC}"
     echo ""
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━ PM2 Process Manager ━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  ${GREEN}${BOLD}[16]${NC} 🚀 ${WHITE}PM2: Start All${NC}              ${DIM}Start Backend + Frontend with PM2${NC}"
+    echo -e "  ${YELLOW}${BOLD}[17]${NC} ⏸️  ${WHITE}PM2: Stop All${NC}               ${DIM}Stop all PM2 processes${NC}"
+    echo -e "  ${YELLOW}${BOLD}[18]${NC} 🔄 ${WHITE}PM2: Restart All${NC}            ${DIM}Restart all PM2 processes${NC}"
+    echo -e "  ${BLUE}${BOLD}[19]${NC} 📊 ${WHITE}PM2: Status${NC}                  ${DIM}View PM2 process status${NC}"
+    echo -e "  ${BLUE}${BOLD}[20]${NC} 📋 ${WHITE}PM2: Logs${NC}                    ${DIM}View PM2 logs${NC}"
+    echo -e "  ${CYAN}${BOLD}[21]${NC} 📈 ${WHITE}PM2: Monitor${NC}                 ${DIM}PM2 real-time monitoring${NC}"
+    echo ""
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━ Nginx Reverse Proxy ━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  ${GREEN}${BOLD}[22]${NC} 🌐 ${WHITE}Nginx: Full Setup${NC}           ${DIM}Install + Configure + Start Nginx${NC}"
+    echo -e "  ${BLUE}${BOLD}[23]${NC} 📊 ${WHITE}Nginx: Status${NC}                ${DIM}Check Nginx status${NC}"
+    echo -e "  ${YELLOW}${BOLD}[24]${NC} 🔄 ${WHITE}Nginx: Restart${NC}              ${DIM}Restart Nginx server${NC}"
+    echo -e "  ${MAGENTA}${BOLD}[25]${NC} ⚙️  ${WHITE}Nginx: Management${NC}           ${DIM}Open Nginx management menu${NC}"
+    echo ""
     echo -e "  ${RED}${BOLD}[0]${NC} 🚪 ${WHITE}Exit${NC}"
     echo ""
     echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -1488,6 +1504,417 @@ option_restart_celery() {
 }
 
 # ═══════════════════════════════════════════════════════════════════
+# PM2 PROCESS MANAGER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════
+
+check_pm2_installed() {
+    if ! command -v pm2 &> /dev/null; then
+        echo -e "${YELLOW}${BOLD}⚠️  PM2 is not installed. Installing...${NC}"
+        npm install -g pm2
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}${BOLD}❌ Failed to install PM2${NC}"
+            return 1
+        fi
+        echo -e "${GREEN}${BOLD}✅ PM2 installed successfully${NC}"
+    fi
+    return 0
+}
+
+create_pm2_ecosystem() {
+    log_step "Creating PM2 ecosystem configuration..."
+    
+    cat > "$PROJECT_ROOT/ecosystem.config.js" << 'ECOSYSTEMFILE'
+module.exports = {
+  apps: [
+    // ═══════════════════════════════════════════════════════════════════
+    // BACKEND SERVICES
+    // ═══════════════════════════════════════════════════════════════════
+    {
+      name: 'redis',
+      script: 'redis-server',
+      args: '--dir /workspaces/vision-computer --logfile /workspaces/vision-computer/backend/logs/redis.log',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 1000,
+      env: {
+        NODE_ENV: 'development'
+      }
+    },
+    {
+      name: 'fastapi',
+      script: 'gunicorn',
+      args: 'app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 300 --keep-alive 5 --log-level info',
+      cwd: '/workspaces/vision-computer/backend',
+      interpreter: 'none',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 2000,
+      env: {
+        NODE_ENV: 'development',
+        PYTHONPATH: '/workspaces/vision-computer/backend'
+      }
+    },
+    {
+      name: 'celery-worker',
+      script: 'celery',
+      args: '-A app.celery_app worker --loglevel=info --concurrency=4 --pool=prefork --queues=unified,analysis,matching,bypass --max-tasks-per-child=10 --time-limit=600 --soft-time-limit=540',
+      cwd: '/workspaces/vision-computer/backend',
+      interpreter: 'none',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 3000,
+      env: {
+        NODE_ENV: 'development',
+        PYTHONPATH: '/workspaces/vision-computer/backend'
+      }
+    },
+    // ═══════════════════════════════════════════════════════════════════
+    // FRONTEND SERVICE
+    // ═══════════════════════════════════════════════════════════════════
+    {
+      name: 'frontend',
+      script: 'npm',
+      args: 'run dev',
+      cwd: '/workspaces/vision-computer/frontend',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 2000,
+      env: {
+        NODE_ENV: 'development',
+        PORT: 3000
+      }
+    }
+  ]
+};
+ECOSYSTEMFILE
+
+    log_success "PM2 ecosystem configuration created"
+    log_info "Location: $PROJECT_ROOT/ecosystem.config.js"
+}
+
+option_pm2_start_all() {
+    show_banner
+    echo -e "${BOLD}${GREEN}[16] 🚀 PM2: Start All Services${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    # Check PM2 installed
+    if ! check_pm2_installed; then
+        press_enter
+        return
+    fi
+
+    # Create ecosystem config if not exists
+    if [ ! -f "$PROJECT_ROOT/ecosystem.config.js" ]; then
+        create_pm2_ecosystem
+        echo ""
+    fi
+
+    # Ensure directories exist
+    mkdir -p "$LOG_DIR" "$PID_DIR" "$BACKEND_DIR/uploads" "$BACKEND_DIR/outputs" "$BACKEND_DIR/temp"
+
+    # Auto-install Redis if not found
+    if ! command -v redis-server &> /dev/null; then
+        echo -e "${YELLOW}${BOLD}📦 Redis not found. Installing automatically...${NC}"
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y redis-server
+        elif command -v brew &> /dev/null; then
+            brew install redis
+        fi
+        echo ""
+    fi
+
+    echo -e "${CYAN}${BOLD}🚀 Starting all services with PM2...${NC}"
+    echo ""
+
+    # Stop existing PM2 processes first
+    pm2 delete all 2>/dev/null || true
+
+    # Start with ecosystem file
+    cd "$PROJECT_ROOT"
+    pm2 start ecosystem.config.js
+
+    echo ""
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}${BOLD}   🎉 ALL SERVICES STARTED WITH PM2! 🎉${NC}"
+    echo ""
+    echo -e "${BOLD}${CYAN}📊 PM2 Process Status:${NC}"
+    echo ""
+    pm2 status
+    echo ""
+    echo -e "${BOLD}${CYAN}🌐 Endpoints:${NC}"
+    echo -e "${DIM}├─${NC} ${WHITE}Frontend${NC}  ${GREEN}http://localhost:3000${NC}"
+    echo -e "${DIM}├─${NC} ${WHITE}API${NC}       ${GREEN}http://localhost:8000${NC}"
+    echo -e "${DIM}└─${NC} ${WHITE}API Docs${NC}  ${GREEN}http://localhost:8000/docs${NC}"
+    echo ""
+    echo -e "${BOLD}${CYAN}💡 Useful Commands:${NC}"
+    echo -e "${DIM}├─${NC} ${WHITE}pm2 logs${NC}          ${DIM}View all logs${NC}"
+    echo -e "${DIM}├─${NC} ${WHITE}pm2 monit${NC}         ${DIM}Real-time monitoring${NC}"
+    echo -e "${DIM}├─${NC} ${WHITE}pm2 restart all${NC}   ${DIM}Restart all services${NC}"
+    echo -e "${DIM}└─${NC} ${WHITE}pm2 stop all${NC}      ${DIM}Stop all services${NC}"
+    echo ""
+
+    press_enter
+}
+
+option_pm2_stop_all() {
+    show_banner
+    echo -e "${BOLD}${YELLOW}[17] ⏸️  PM2: Stop All Services${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if ! command -v pm2 &> /dev/null; then
+        echo -e "${RED}${BOLD}❌ PM2 is not installed${NC}"
+        press_enter
+        return
+    fi
+
+    echo -e "${CYAN}${BOLD}🛑 Stopping all PM2 processes...${NC}"
+    echo ""
+
+    pm2 stop all
+
+    echo ""
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}${BOLD}   🎉 ALL PM2 PROCESSES STOPPED! 🎉${NC}"
+    echo ""
+    pm2 status
+    echo ""
+
+    press_enter
+}
+
+option_pm2_restart_all() {
+    show_banner
+    echo -e "${BOLD}${YELLOW}[18] 🔄 PM2: Restart All Services${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if ! command -v pm2 &> /dev/null; then
+        echo -e "${RED}${BOLD}❌ PM2 is not installed${NC}"
+        press_enter
+        return
+    fi
+
+    echo -e "${CYAN}${BOLD}🔄 Restarting all PM2 processes...${NC}"
+    echo ""
+
+    pm2 restart all
+
+    echo ""
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${GREEN}${BOLD}   🎊 ALL PM2 PROCESSES RESTARTED! 🎊${NC}"
+    echo ""
+    pm2 status
+    echo ""
+
+    press_enter
+}
+
+option_pm2_status() {
+    show_banner
+    echo -e "${BOLD}${BLUE}[19] 📊 PM2: Process Status${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if ! command -v pm2 &> /dev/null; then
+        echo -e "${RED}${BOLD}❌ PM2 is not installed${NC}"
+        press_enter
+        return
+    fi
+
+    echo -e "${CYAN}${BOLD}📊 PM2 Process Status:${NC}"
+    echo ""
+    pm2 status
+
+    echo ""
+    echo -e "${CYAN}${BOLD}💾 System Memory:${NC}"
+    pm2 prettylist 2>/dev/null | grep -E "(name|memory|cpu)" | head -20 || true
+
+    echo ""
+    press_enter
+}
+
+option_pm2_logs() {
+    show_banner
+    echo -e "${BOLD}${BLUE}[20] 📋 PM2: View Logs${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if ! command -v pm2 &> /dev/null; then
+        echo -e "${RED}${BOLD}❌ PM2 is not installed${NC}"
+        press_enter
+        return
+    fi
+
+    echo -e "${CYAN}${BOLD}Select log to view:${NC}"
+    echo ""
+    echo -e "  ${GREEN}${BOLD}[1]${NC} 📋 ${WHITE}All Logs${NC}"
+    echo -e "  ${BLUE}${BOLD}[2]${NC} 💾 ${WHITE}Redis Logs${NC}"
+    echo -e "  ${MAGENTA}${BOLD}[3]${NC} 🌐 ${WHITE}FastAPI Logs${NC}"
+    echo -e "  ${YELLOW}${BOLD}[4]${NC} 🔥 ${WHITE}Celery Logs${NC}"
+    echo -e "  ${CYAN}${BOLD}[5]${NC} 🖥️  ${WHITE}Frontend Logs${NC}"
+    echo -e "  ${RED}${BOLD}[0]${NC} 🔙 ${WHITE}Back${NC}"
+    echo ""
+    echo -ne "${BOLD}${WHITE}Select [0-5]: ${NC}"
+    read -r log_choice
+
+    case $log_choice in
+        1) pm2 logs --lines 100 ;;
+        2) pm2 logs redis --lines 100 ;;
+        3) pm2 logs fastapi --lines 100 ;;
+        4) pm2 logs celery-worker --lines 100 ;;
+        5) pm2 logs frontend --lines 100 ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid option${NC}" ;;
+    esac
+
+    press_enter
+}
+
+option_pm2_monitor() {
+    show_banner
+    echo -e "${BOLD}${CYAN}[21] 📈 PM2: Real-time Monitoring${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if ! command -v pm2 &> /dev/null; then
+        echo -e "${RED}${BOLD}❌ PM2 is not installed${NC}"
+        press_enter
+        return
+    fi
+
+    echo -e "${CYAN}${BOLD}📈 Starting PM2 Monitor...${NC}"
+    echo -e "${YELLOW}${BOLD}Press Ctrl+C to exit${NC}"
+    echo ""
+    sleep 1
+
+    pm2 monit
+}
+
+# ═══════════════════════════════════════════════════════════════════
+# NGINX FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════
+
+option_nginx_full_setup() {
+    show_banner
+    echo -e "${BOLD}${GREEN}[22] 🌐 Nginx: Full Setup${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if [ -f "$PROJECT_ROOT/nginx/setup_nginx.sh" ]; then
+        chmod +x "$PROJECT_ROOT/nginx/setup_nginx.sh"
+        bash "$PROJECT_ROOT/nginx/setup_nginx.sh" full
+    else
+        log_error "Nginx setup script not found!"
+        log_info "Expected at: $PROJECT_ROOT/nginx/setup_nginx.sh"
+    fi
+
+    press_enter
+}
+
+option_nginx_status() {
+    show_banner
+    echo -e "${BOLD}${BLUE}[23] 📊 Nginx: Status${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    echo -e "${BOLD}${CYAN}📊 Nginx Status:${NC}"
+    echo ""
+    
+    if pgrep -x "nginx" > /dev/null; then
+        local pid=$(pgrep -x "nginx" | head -1)
+        echo -e "${DIM}├─${NC} ${WHITE}Status${NC}         ${GREEN}${BOLD}● RUNNING${NC}"
+        echo -e "${DIM}├─${NC} ${WHITE}Master PID${NC}     ${CYAN}$pid${NC}"
+        echo -e "${DIM}├─${NC} ${WHITE}Workers${NC}        ${CYAN}$(pgrep -x "nginx" | wc -l)${NC}"
+        
+        # Check ports
+        if ss -tlnp 2>/dev/null | grep -q ":80.*nginx" || netstat -tlnp 2>/dev/null | grep -q ":80.*nginx"; then
+            echo -e "${DIM}├─${NC} ${WHITE}Port 80${NC}        ${GREEN}✓ Listening${NC}"
+        else
+            echo -e "${DIM}├─${NC} ${WHITE}Port 80${NC}        ${YELLOW}○ Not listening${NC}"
+        fi
+        
+        if ss -tlnp 2>/dev/null | grep -q ":443.*nginx" || netstat -tlnp 2>/dev/null | grep -q ":443.*nginx"; then
+            echo -e "${DIM}├─${NC} ${WHITE}Port 443${NC}       ${GREEN}✓ Listening (HTTPS)${NC}"
+        fi
+        
+        echo -e "${DIM}└─${NC} ${WHITE}Config${NC}         ${CYAN}/etc/nginx/sites-enabled/${NC}"
+    else
+        echo -e "${DIM}├─${NC} ${WHITE}Status${NC}         ${RED}${BOLD}⭘ NOT RUNNING${NC}"
+        echo -e "${DIM}└─${NC} ${WHITE}Tip${NC}            ${DIM}Use option [22] to setup Nginx${NC}"
+    fi
+    echo ""
+
+    # Show endpoints if running
+    if pgrep -x "nginx" > /dev/null; then
+        echo -e "${BOLD}${CYAN}🌐 Endpoints (via Nginx):${NC}"
+        echo -e "${DIM}├─${NC} ${WHITE}Frontend${NC}   ${GREEN}http://localhost${NC}"
+        echo -e "${DIM}├─${NC} ${WHITE}API${NC}        ${GREEN}http://localhost/api/v1/${NC}"
+        echo -e "${DIM}└─${NC} ${WHITE}API Docs${NC}   ${GREEN}http://localhost/api/v1/docs${NC}"
+    fi
+    echo ""
+
+    press_enter
+}
+
+option_nginx_restart() {
+    show_banner
+    echo -e "${BOLD}${YELLOW}[24] 🔄 Nginx: Restart${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if ! command -v nginx &> /dev/null; then
+        log_error "Nginx is not installed"
+        log_info "Use option [22] for full Nginx setup"
+        press_enter
+        return
+    fi
+
+    log_step "Testing Nginx configuration..."
+    if sudo nginx -t; then
+        log_success "Configuration is valid"
+        echo ""
+        log_step "Restarting Nginx..."
+        sudo systemctl restart nginx 2>/dev/null || (sudo nginx -s stop 2>/dev/null; sleep 1; sudo nginx)
+        
+        if pgrep -x "nginx" > /dev/null; then
+            log_success "Nginx restarted successfully"
+        else
+            log_error "Failed to restart Nginx"
+        fi
+    else
+        log_error "Configuration test failed. Not restarting."
+    fi
+    echo ""
+
+    press_enter
+}
+
+option_nginx_management() {
+    show_banner
+    echo -e "${BOLD}${MAGENTA}[25] ⚙️  Nginx: Management Menu${NC}"
+    echo -e "${BOLD}${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    if [ -f "$PROJECT_ROOT/nginx/setup_nginx.sh" ]; then
+        chmod +x "$PROJECT_ROOT/nginx/setup_nginx.sh"
+        bash "$PROJECT_ROOT/nginx/setup_nginx.sh"
+    else
+        log_error "Nginx setup script not found!"
+        log_info "Expected at: $PROJECT_ROOT/nginx/setup_nginx.sh"
+        press_enter
+    fi
+}
+
+# ═══════════════════════════════════════════════════════════════════
 # MAIN LOOP
 # ═══════════════════════════════════════════════════════════════════
 
@@ -1499,7 +1926,7 @@ main() {
         show_banner
         show_menu
 
-        echo -ne "${BOLD}${WHITE}Select option [0-15]: ${NC}"
+        echo -ne "${BOLD}${WHITE}Select option [0-25]: ${NC}"
         read -r choice
 
         case $choice in
@@ -1548,6 +1975,36 @@ main() {
             15) 
                 option_restart_celery || true
                 ;;
+            16) 
+                option_pm2_start_all || true
+                ;;
+            17) 
+                option_pm2_stop_all || true
+                ;;
+            18) 
+                option_pm2_restart_all || true
+                ;;
+            19) 
+                option_pm2_status || true
+                ;;
+            20) 
+                option_pm2_logs || true
+                ;;
+            21) 
+                option_pm2_monitor || true
+                ;;
+            22) 
+                option_nginx_full_setup || true
+                ;;
+            23) 
+                option_nginx_status || true
+                ;;
+            24) 
+                option_nginx_restart || true
+                ;;
+            25) 
+                option_nginx_management || true
+                ;;
             0)
                 show_banner
                 echo -e "${GREEN}${BOLD}👋 Thank you for using Anti-Plagiasi System!${NC}"
@@ -1558,7 +2015,7 @@ main() {
                 ;;
             *)
                 echo ""
-                echo -e "${RED}${BOLD}❌ Invalid option. Please choose 0-15.${NC}"
+                echo -e "${RED}${BOLD}❌ Invalid option. Please choose 0-25.${NC}"
                 sleep 2
                 ;;
         esac
